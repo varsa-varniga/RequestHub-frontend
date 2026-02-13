@@ -1,0 +1,18 @@
+/* Remove default browser spacing */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Make full height layout */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+/* Remove body white gap */
+body {
+  margin: 0;
+  overflow-x: hidden;
+}
