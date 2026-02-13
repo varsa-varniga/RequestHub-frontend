@@ -1,42 +1,57 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
-import { CssBaseline, Container, Typography } from "@mui/material";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { CssBaseline } from "@mui/material";
+
+import Login from "./pages/Login";
+import UserDashboard from "./pages/UserDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+
+// Simple Protected Route Component
+function ProtectedRoute({ children, requiredRole }) {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  if (!token) {
+    return <Navigate to="/" />;
+  }
+
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to="/" />;
+  }
+
+  return children;
+}
 
 function App() {
   return (
     <>
       <CssBaseline />
       <Routes>
-        <Route
-          path="/"
-          element={
-            <Container>
-              <Typography variant="h4" sx={{ mt: 4 }}>
-                Login Page
-              </Typography>
-            </Container>
-          }
-        />
+        {/* Public Route */}
+        <Route path="/" element={<Login />} />
+
+        {/* User Route */}
         <Route
           path="/dashboard"
           element={
-            <Container>
-              <Typography variant="h4" sx={{ mt: 4 }}>
-                Dashboard Page
-              </Typography>
-            </Container>
+            <ProtectedRoute requiredRole="user">
+              <UserDashboard />
+            </ProtectedRoute>
           }
         />
+
+        {/* Admin Route */}
         <Route
-          path="*"
+          path="/admin"
           element={
-            <Container>
-              <Typography variant="h4" sx={{ mt: 4 }}>
-                404 - Page Not Found
-              </Typography>
-            </Container>
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
           }
         />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
   );
