@@ -3,48 +3,244 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import API from "../api/api";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  InputAdornment,
+  Paper,
+  Snackbar,
+  Alert,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { Visibility, VisibilityOff, LockOutlined, PersonAdd } from "@mui/icons-material";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+
+const theme = createTheme({
+  palette: {
+    mode: "dark",
+    primary: { main: "#F59E0B" },
+    background: { default: "#0A0A0F", paper: "#13131A" },
+    text: { primary: "#F1F0EE", secondary: "#7A7A8C" },
+  },
+  typography: {
+    fontFamily: "'DM Sans', sans-serif",
+    h4: { fontFamily: "'Playfair Display', serif", fontWeight: 700 },
+  },
+  shape: { borderRadius: 12 },
+});
 
 export default function Login() {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      // try calling a protected endpoint to validate credentials
-      API.defaults.auth = { username: email, password };
-      const res = await API.get("/user/requests"); // test login
+    setLoading(true);
+    setError("");
 
-      login(email, password, "USER"); // for now role hardcoded; can improve later
-      navigate("/user"); // redirect to user dashboard
+    try {
+      if (isLogin) {
+        // Encode credentials for Basic Auth
+        const token = btoa(`${email}:${password}`);
+
+        // Step 1: Call /auth/me to get authenticated user info including role
+        const res = await API.get("/auth/me", {
+          headers: { Authorization: `Basic ${token}` },
+        });
+
+        console.log("Login response:", res.data);
+
+        // Extract role
+        const role = res.data.role || "USER";
+
+        // Store user info in context
+        login(email, password, role);
+
+        // Navigate based on role
+        if (role === "ADMIN") navigate("/admin/dashboard");
+        else navigate("/user/dashboard");
+      } else {
+        // Registration
+        if (password !== confirmPassword) {
+          setError("Passwords do not match");
+          setLoading(false);
+          return;
+        }
+
+        const payload = { email, password, role: "USER" };
+        await API.post("/users", payload);
+
+        setIsLogin(true);
+        setError("Registration successful. Please login.");
+      }
     } catch (err) {
-      alert("Invalid credentials");
       console.error(err);
+      setError(isLogin ? "Invalid email or password" : "Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        /><br/>
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        /><br/>
-        <button type="submit">Login</button>
-      </form>
-    </div>
+    <ThemeProvider theme={theme}>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          backgroundColor: "background.default",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 2,
+          backgroundImage: `
+            radial-gradient(ellipse 80% 50% at 50% -20%, #F59E0B18 0%, transparent 60%),
+            linear-gradient(#1C1C2612 1px, transparent 1px),
+            linear-gradient(90deg, #1C1C2612 1px, transparent 1px)
+          `,
+          backgroundSize: "100% 100%, 40px 40px, 40px 40px",
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            width: "100%",
+            maxWidth: 420,
+            p: { xs: 4, sm: 5 },
+            border: "1px solid #2A2A38",
+            backgroundColor: "background.paper",
+            boxShadow: "0 0 60px #F59E0B0A, 0 24px 48px #00000060",
+          }}
+        >
+          <Stack alignItems="center" spacing={1.5} mb={4}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: "12px",
+                backgroundColor: isLogin ? "#F59E0B18" : "#00E5FF18",
+                border: "1px solid",
+                borderColor: isLogin ? "#F59E0B44" : "#00E5FF44",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "primary.main",
+              }}
+            >
+              {isLogin ? <LockOutlined fontSize="small" /> : <PersonAdd fontSize="small" />}
+            </Box>
+            <Typography variant="h4" color="text.primary">
+              {isLogin ? "Welcome back" : "Create Account"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isLogin ? "Sign in to your account to continue" : "Register a new account"}
+            </Typography>
+          </Stack>
+
+          <Box component="form" onSubmit={handleSubmit}>
+            <Stack spacing={2.5} alignItems="stretch">
+              <TextField
+                label="Email address"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                fullWidth
+                autoComplete="email"
+                autoFocus
+                sx={{ "& .MuiInputBase-root": { height: 56 } }}
+              />
+
+              <TextField
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                fullWidth
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                sx={{ "& .MuiInputBase-root": { height: 56 } }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword((v) => !v)}
+                        edge="end"
+                        size="small"
+                        sx={{ color: "text.secondary", p: 0.5 }}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {!isLogin && (
+                <TextField
+                  label="Confirm Password"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  fullWidth
+                  sx={{ "& .MuiInputBase-root": { height: 56 } }}
+                />
+              )}
+
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                disabled={loading}
+                sx={{
+                  mt: 0.5,
+                  color: "#0A0A0F",
+                  height: 48,
+                  "&:hover": { backgroundColor: "#FBBF24" },
+                  "&.Mui-disabled": { backgroundColor: "#F59E0B55", color: "#0A0A0F88" },
+                }}
+              >
+                {loading ? <CircularProgress size={22} sx={{ color: "#0A0A0F" }} /> : isLogin ? "Sign in" : "Register"}
+              </Button>
+
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                textAlign="center"
+                mt={2}
+                sx={{ cursor: "pointer", "&:hover": { color: "primary.main" } }}
+                onClick={() => setIsLogin((prev) => !prev)}
+              >
+                {isLogin ? "Don't have an account? Register" : "Already have an account? Sign in"}
+              </Typography>
+            </Stack>
+          </Box>
+        </Paper>
+      </Box>
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={5000}
+        onClose={() => setError("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="error" variant="filled" onClose={() => setError("")} sx={{ width: "100%" }}>
+          {error}
+        </Alert>
+      </Snackbar>
+    </ThemeProvider>
   );
 }

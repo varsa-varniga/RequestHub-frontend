@@ -1,47 +1,310 @@
+// src/pages/CreateRequest.jsx
 import { useState } from "react";
 import API from "../api/api";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
+import {
+  AddCircleOutlineOutlined,
+  ArrowUpwardOutlined,
+  RemoveOutlined,
+  DragHandleOutlined,
+} from "@mui/icons-material";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 
-function CreateRequest() {
+const theme = createTheme({
+  palette: {
+    mode: "dark",
+    primary: { main: "#F59E0B" },
+    background: { default: "#0A0A0F", paper: "#13131A" },
+    text: { primary: "#F1F0EE", secondary: "#7A7A8C" },
+  },
+  typography: {
+    fontFamily: "'DM Sans', sans-serif",
+    h5: { fontFamily: "'Playfair Display', serif", fontWeight: 700 },
+  },
+  shape: { borderRadius: 12 },
+  components: {
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-root": {
+            backgroundColor: "#1C1C26",
+            "& fieldset": { borderColor: "#2A2A38" },
+            "&:hover fieldset": { borderColor: "#F59E0B88" },
+            "&.Mui-focused fieldset": { borderColor: "#F59E0B" },
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1C1C26",
+          "& .MuiOutlinedInput-notchedOutline": { borderColor: "#2A2A38" },
+          "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#F59E0B88" },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#F59E0B" },
+        },
+      },
+    },
+  },
+});
 
-  const [req,setReq] = useState({
-    title:"",
-    description:"",
-    type:"",
-    urgency:"LOW"
-  })
+const URGENCY_OPTIONS = [
+  { value: "LOW",    label: "Low",    icon: <RemoveOutlined fontSize="small" />,    color: "#10B981" },
+  { value: "MEDIUM", label: "Medium", icon: <DragHandleOutlined fontSize="small" />, color: "#F59E0B" },
+  { value: "HIGH",   label: "High",   icon: <ArrowUpwardOutlined fontSize="small" />, color: "#EF4444" },
+];
+
+const REQUEST_TYPES = ["Bug Report", "Feature Request", "Access", "Support", "Other"];
+
+const EMPTY = { title: "", description: "", type: "", urgency: "LOW" };
+
+export default function CreateRequest() {
+  const [req, setReq] = useState(EMPTY);
+  const [loading, setLoading] = useState(false);
+  const [snack, setSnack] = useState({ open: false, severity: "success", message: "" });
+
+  const set = (field) => (e) => setReq((prev) => ({ ...prev, [field]: e.target.value }));
 
   const submit = async () => {
+    if (!req.title.trim() || !req.type) {
+      setSnack({ open: true, severity: "error", message: "Title and type are required." });
+      return;
+    }
+    setLoading(true);
+    try {
+      await API.post("/user/requests", req);
+      setSnack({ open: true, severity: "success", message: "Request submitted successfully!" });
+      setReq(EMPTY);
+    } catch (err) {
+      console.error(err);
+      setSnack({ open: true, severity: "error", message: "Failed to submit request. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    await API.post("/user/requests",req);
-
-    alert("Request created")
-
-  }
+  const activeUrgency = URGENCY_OPTIONS.find((o) => o.value === req.urgency);
 
   return (
-    <div>
+    <ThemeProvider theme={theme}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');`}</style>
 
-      <h2>Create Request</h2>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          backgroundColor: "background.default",
+          backgroundImage: `
+            radial-gradient(ellipse 70% 40% at 50% -10%, #F59E0B12 0%, transparent 60%),
+            linear-gradient(#1C1C2610 1px, transparent 1px),
+            linear-gradient(90deg, #1C1C2610 1px, transparent 1px)
+          `,
+          backgroundSize: "100% 100%, 40px 40px, 40px 40px",
+          py: 5,
+        }}
+      >
+        <Container maxWidth="sm">
+          <Paper
+            elevation={0}
+            sx={{
+              border: "1px solid #2A2A38",
+              backgroundColor: "background.paper",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <Box
+              sx={{
+                px: 3,
+                py: 2.5,
+                borderBottom: "1px solid #2A2A38",
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "10px",
+                  backgroundColor: "#F59E0B18",
+                  border: "1px solid #F59E0B44",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "primary.main",
+                }}
+              >
+                <AddCircleOutlineOutlined fontSize="small" />
+              </Box>
+              <Box>
+                <Typography variant="h5" color="text.primary" fontSize="1.15rem">
+                  New Request
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Fill in the details below to submit your request
+                </Typography>
+              </Box>
+            </Box>
 
-      <input placeholder="Title"
-        onChange={(e)=>setReq({...req,title:e.target.value})} />
+            {/* Form body */}
+            <Stack spacing={3} p={3}>
+              <TextField
+                label="Title"
+                placeholder="Brief summary of your request"
+                value={req.title}
+                onChange={set("title")}
+                fullWidth
+                required
+              />
 
-      <input placeholder="Description"
-        onChange={(e)=>setReq({...req,description:e.target.value})} />
+              <TextField
+                label="Description"
+                placeholder="Provide additional context or details…"
+                value={req.description}
+                onChange={set("description")}
+                fullWidth
+                multiline
+                rows={4}
+              />
 
-      <input placeholder="Type"
-        onChange={(e)=>setReq({...req,type:e.target.value})} />
+              <FormControl fullWidth required>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={req.type}
+                  label="Type"
+                  onChange={set("type")}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        backgroundColor: "#1C1C26",
+                        border: "1px solid #2A2A38",
+                        mt: 0.5,
+                      },
+                    },
+                  }}
+                >
+                  {REQUEST_TYPES.map((t) => (
+                    <MenuItem
+                      key={t}
+                      value={t}
+                      sx={{ "&:hover": { backgroundColor: "#F59E0B14" } }}
+                    >
+                      {t}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-      <select onChange={(e)=>setReq({...req,urgency:e.target.value})}>
-        <option>LOW</option>
-        <option>MEDIUM</option>
-        <option>HIGH</option>
-      </select>
+              {/* Urgency toggle */}
+              <Box>
+                <Typography variant="caption" color="text.secondary" mb={1} display="block">
+                  Urgency
+                </Typography>
+                <ToggleButtonGroup
+                  value={req.urgency}
+                  exclusive
+                  onChange={(_, val) => val && setReq((prev) => ({ ...prev, urgency: val }))}
+                  fullWidth
+                  sx={{ gap: 1 }}
+                >
+                  {URGENCY_OPTIONS.map((opt) => (
+                    <ToggleButton
+                      key={opt.value}
+                      value={opt.value}
+                      sx={{
+                        flex: 1,
+                        border: "1px solid #2A2A38 !important",
+                        borderRadius: "10px !important",
+                        color: "text.secondary",
+                        backgroundColor: "#1C1C26",
+                        gap: 0.75,
+                        py: 1.2,
+                        textTransform: "none",
+                        fontWeight: 500,
+                        fontSize: "0.875rem",
+                        transition: "all 0.15s",
+                        "&.Mui-selected": {
+                          backgroundColor: `${opt.color}18`,
+                          borderColor: `${opt.color}55 !important`,
+                          color: opt.color,
+                        },
+                        "&:hover": {
+                          backgroundColor: `${opt.color}10`,
+                          borderColor: `${opt.color}44 !important`,
+                          color: opt.color,
+                        },
+                      }}
+                    >
+                      {opt.icon}
+                      {opt.label}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </Box>
 
-      <button onClick={submit}>Submit</button>
+              <Divider sx={{ borderColor: "#2A2A38" }} />
 
-    </div>
-  )
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={submit}
+                disabled={loading}
+                fullWidth
+                sx={{
+                  color: "#0A0A0F",
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  py: 1.4,
+                  textTransform: "none",
+                  "&:hover": { backgroundColor: "#FBBF24" },
+                  "&.Mui-disabled": { backgroundColor: "#F59E0B55", color: "#0A0A0F88" },
+                }}
+              >
+                {loading ? (
+                  <CircularProgress size={22} sx={{ color: "#0A0A0F" }} />
+                ) : (
+                  "Submit Request"
+                )}
+              </Button>
+            </Stack>
+          </Paper>
+        </Container>
+      </Box>
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={5000}
+        onClose={() => setSnack((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={snack.severity}
+          variant="filled"
+          onClose={() => setSnack((s) => ({ ...s, open: false }))}
+          sx={{ width: "100%" }}
+        >
+          {snack.message}
+        </Alert>
+      </Snackbar>
+    </ThemeProvider>
+  );
 }
-
-export default CreateRequest
