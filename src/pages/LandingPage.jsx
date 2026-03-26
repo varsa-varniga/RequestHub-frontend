@@ -1,9 +1,5 @@
 // src/pages/LandingPage.jsx
 import { Box } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
-import theme from "../theme";
-
-import GlobalStyles from "../wrapper/GlobalStyles";
 import BackToTop from "../wrapper/BackToTop";
 
 
@@ -18,18 +14,15 @@ import Navbar from "../components/landing/Navbar";
 
 export default function LandingPage() {
   return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyles />
-      <Box sx={{ backgroundColor: "background.default", color: "text.primary", overflowX: "hidden" }}>
-        <Navbar />
-        <Hero />
-        <Features />
-        <HowItWorks />
-        <TechStack />
-        <Demo />
-        <Footer />
-        <BackToTop />
-      </Box>
-    </ThemeProvider>
+    <Box sx={{ backgroundColor: "background.default", color: "text.primary", overflowX: "hidden" }}>
+      <Navbar />
+      <Hero />
+      <Features />
+      <HowItWorks />
+      <TechStack />
+      <Demo />
+      <Footer />
+      <BackToTop />
+    </Box>
   );
 }

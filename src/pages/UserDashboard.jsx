@@ -1,515 +1,757 @@
 // src/pages/UserDashboard.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api/api";
 import { useAuth } from "../context/AuthContext";
+import { useThemeMode } from "../context/ThemeContext";
 import {
-  Alert, Avatar, Box, Button, Chip, CircularProgress, Container,
-  Divider, Grid, Paper, Stack, Typography,
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Grid,
+  IconButton,
+  InputBase,
+  LinearProgress,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Paper,
+  Stack,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
-  LogoutOutlined, InboxOutlined, FiberManualRecord,
-  AddCircleOutlineOutlined, PendingActionsOutlined,
-  CheckCircleOutlined, CancelOutlined, FolderOutlined,
-  ExpandMoreOutlined, ExpandLessOutlined, CommentOutlined,
-  CalendarTodayOutlined, LabelOutlined, ErrorOutlineOutlined,
+  AddCircleOutline,
+  Brightness4,
+  Brightness7,
+  Dashboard,
+  HelpOutline,
+  ListAlt,
+  Menu as MenuIcon,
+  NotificationsNone,
+  PendingActions,
+  Search,
+  ChevronLeft,
+  TaskAlt,
+  ErrorOutline,
+  WarningAmber,
+  History,
+  Person,
+  Logout,
 } from "@mui/icons-material";
-import { ThemeProvider } from "@mui/material/styles";
-import { useNavigate } from "react-router-dom";
-import theme from "../theme";
-import GlobalStyles from "../wrapper/GlobalStyles";
 
-/* ─── CONFIG ─────────────────────────────────────────────────── */
+const SIDEBAR_WIDTH = 264;
+const SIDEBAR_COLLAPSED = 86;
+
+const NAV_ITEMS = [
+  { label: "Dashboard", path: "/user/dashboard", icon: <Dashboard fontSize="small" /> },
+  { label: "Submit Request", path: "/user/create", icon: <AddCircleOutline fontSize="small" /> },
+  { label: "My Requests", path: "/user/requests", icon: <ListAlt fontSize="small" /> },
+  { label: "Notifications", path: "/user/notifications", icon: <NotificationsNone fontSize="small" /> },
+  { label: "Help / Support", path: "/help", icon: <HelpOutline fontSize="small" /> },
+];
+
 const STATUS_CONFIG = {
-  PENDING:  { color: "#F59E0B", label: "Pending",  bg: "#F59E0B12" },
-  APPROVED: { color: "#10B981", label: "Approved", bg: "#10B98112" },
-  REJECTED: { color: "#EF4444", label: "Rejected", bg: "#EF444412" },
-  CLOSED:   { color: "#7B8DB0", label: "Closed",   bg: "#7B8DB012" },
+  Pending: { color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+  Approved: { color: "#22C55E", bg: "rgba(34,197,94,0.12)" },
+  Rejected: { color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+  Escalated: { color: "#EAB308", bg: "rgba(234,179,8,0.14)" },
 };
 
-const URGENCY_CONFIG = {
-  HIGH:   { color: "#EF4444", label: "High" },
-  MEDIUM: { color: "#F59E0B", label: "Medium" },
-  LOW:    { color: "#10B981", label: "Low" },
-};
+const QUICK_SHORTCUTS = ["IT Access", "Hardware Request", "Compliance Request"];
 
-const TYPE_COLORS = ["#00E5FF", "#7C3AED", "#F59E0B", "#10B981", "#EF4444", "#06B6D4"];
+function formatRelativeHours(hours) {
+  if (hours <= 0) return "Due now";
+  if (hours < 1) return "<1h";
+  if (hours < 24) return `${Math.round(hours)}h`;
+  const days = Math.floor(hours / 24);
+  const rem = Math.round(hours % 24);
+  return `${days}d ${rem}h`;
+}
 
-/* ─── STATUS CHIP ─────────────────────────────────────────────── */
+function Sidebar({ collapsed, onToggle, onLogout, onNavigate, activePath }) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        width: collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH,
+        height: "100vh",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        borderRight: (theme) => `1px solid ${theme.palette.divider}`,
+        backgroundColor: "background.paper",
+        display: "flex",
+        flexDirection: "column",
+        transition: "width 0.22s ease",
+        zIndex: 1200,
+        overflow: "hidden",
+      }}
+    >
+      <Box sx={{ px: collapsed ? 2 : 3, pt: 3, pb: 2, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between" }}>
+        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ opacity: collapsed ? 0 : 1, transition: "opacity 0.22s ease" }}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: 2,
+              background: "linear-gradient(135deg, #6366F1, #22D3EE)",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <Dashboard sx={{ color: "#fff", fontSize: 20 }} />
+          </Box>
+          <Typography variant="h6" fontWeight={800} letterSpacing="-0.02em">
+            RequestHub
+          </Typography>
+        </Stack>
+        <IconButton size="small" onClick={onToggle} sx={{ bgcolor: "action.hover", borderRadius: 2 }}>
+          {collapsed ? <MenuIcon fontSize="small" /> : <ChevronLeft fontSize="small" />}
+        </IconButton>
+      </Box>
+
+      <List sx={{ flex: 1, minHeight: 0, px: 1, overflowY: "auto" }}>
+        {NAV_ITEMS.map((item) => (
+          <ListItemButton
+            key={item.label}
+            selected={activePath === item.path}
+            onClick={() => onNavigate(item.path)}
+            sx={{
+              borderRadius: 2,
+              mb: 0.5,
+              px: collapsed ? 1 : 2,
+              justifyContent: collapsed ? "center" : "flex-start",
+              color: item.label === "Dashboard" ? "primary.contrastText" : "text.secondary",
+              bgcolor: item.label === "Dashboard" ? "primary.main" : "transparent",
+              "&:hover": {
+                bgcolor: item.label === "Dashboard" ? "primary.main" : "action.hover",
+              },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 0,
+                mr: collapsed ? 0 : 1.5,
+                color: item.label === "Dashboard" ? "primary.contrastText" : "text.secondary",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              {item.icon}
+            </ListItemIcon>
+            {!collapsed && <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 700 }} />}
+          </ListItemButton>
+        ))}
+      </List>
+
+      <Divider />
+
+      <Box sx={{ px: collapsed ? 1.5 : 2.5, py: 2, mt: "auto", display: "grid", rowGap: 1 }}>
+        <Button variant="text" color="inherit" startIcon={<Person fontSize="small" />} sx={{ justifyContent: collapsed ? "center" : "flex-start" }} onClick={() => onNavigate("/user/profile")}>
+          Profile
+        </Button>
+        <Button variant="text" color="inherit" startIcon={<Logout fontSize="small" />} sx={{ justifyContent: collapsed ? "center" : "flex-start" }} onClick={onLogout}>
+          Logout
+        </Button>
+      </Box>
+    </Paper>
+  );
+}
+
+function Header({ onMenuClick }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { mode, toggleMode } = useThemeMode();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [anchor, setAnchor] = useState(null);
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        position: "sticky",
+        top: 0,
+        zIndex: 1100,
+        borderBottom: (t) => `1px solid ${t.palette.divider}`,
+        px: { xs: 2, md: 3 },
+        py: 1.5,
+        backgroundColor: "background.paper",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <Stack direction="row" alignItems="center" spacing={2} justifyContent="space-between">
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          {(isMobile || true) && (
+            <IconButton onClick={onMenuClick} size="small" sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Paper
+            variant="outlined"
+            sx={{
+              px: 2,
+              py: 0.4,
+              borderRadius: 2,
+              backgroundColor: mode === "light" ? "#fff" : "rgba(255,255,255,0.04)",
+              minWidth: 260,
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Search sx={{ color: "text.secondary", fontSize: 20 }} />
+              <InputBase placeholder="Search requests, people, teams..." sx={{ flex: 1 }} />
+              <Chip label="Cmd K" size="small" variant="outlined" sx={{ fontSize: "0.75rem", height: 24, borderRadius: 1.2 }} />
+            </Stack>
+          </Paper>
+        </Stack>
+
+        <Stack direction="row" alignItems="center" spacing={1.25}>
+          <Tooltip title="Theme">
+            <IconButton onClick={toggleMode} sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
+              {mode === "light" ? <Brightness4 /> : <Brightness7 />}
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Notifications">
+            <IconButton sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
+              <Badge color="warning" variant="dot">
+                <NotificationsNone />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
+          <Avatar
+            sx={{
+              width: 36,
+              height: 36,
+              bgcolor: "primary.main",
+              cursor: "pointer",
+              border: (t) => `2px solid ${t.palette.background.paper}`,
+            }}
+            onClick={(e) => setAnchor(e.currentTarget)}
+          >
+            {(user?.email || "U").charAt(0).toUpperCase()}
+          </Avatar>
+          <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)} keepMounted>
+            <MenuItem>Profile</MenuItem>
+            <MenuItem>Settings</MenuItem>
+            <MenuItem
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+            >
+              Logout
+            </MenuItem>
+          </Menu>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
 function StatusChip({ status }) {
-  const cfg = STATUS_CONFIG[status?.toUpperCase()] ?? { color: "#7B8DB0", label: status ?? "Unknown", bg: "#7B8DB012" };
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
   return (
     <Chip
+      label={status}
       size="small"
-      icon={<FiberManualRecord sx={{ fontSize: "8px !important", color: `${cfg.color} !important` }} />}
-      label={cfg.label}
       sx={{
-        backgroundColor: cfg.bg, color: cfg.color,
-        border: `1px solid ${cfg.color}44`,
-        fontWeight: 700, fontSize: "0.78rem", height: 28, px: 0.5,
+        bgcolor: cfg.bg,
+        color: cfg.color,
+        fontWeight: 700,
+        borderRadius: 1.5,
       }}
     />
   );
 }
 
-/* ─── STAT CARD ──────────────────────────────────────────────── */
-function StatCard({ label, value, icon: Icon, color }) {
+const normalizeStatus = (value) => {
+  const raw = (value || "Pending").toString().toLowerCase();
+  if (raw.includes("approve")) return "Approved";
+  if (raw.includes("reject")) return "Rejected";
+  if (raw.includes("escalat")) return "Escalated";
+  return "Pending";
+};
+
+const formatLabel = (value) => {
+  if (!value) return "";
+  const text = value.toString().replace(/_/g, " ").toLowerCase();
+  return text.replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+function StatCard({ label, value, color, icon, trend }) {
   return (
-    <Paper elevation={0} sx={{
-      p: 3, border: "1px solid rgba(255,255,255,0.06)",
-      backgroundColor: "background.paper", borderRadius: "16px",
-      transition: "all 0.2s ease",
-      "&:hover": {
-        borderColor: `${color}44`,
-        transform: "translateY(-2px)",
-        boxShadow: `0 8px 32px ${color}12`,
-      },
-    }}>
-      <Stack direction="row" alignItems="center" spacing={2}>
-        <Box sx={{
-          width: 48, height: 48, borderRadius: "14px",
-          backgroundColor: `${color}14`,
-          border: `1px solid ${color}30`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color, flexShrink: 0,
-        }}>
-          <Icon sx={{ fontSize: 22 }} />
-        </Box>
-        <Box>
-          <Typography variant="h4" fontWeight={800} color="text.primary" lineHeight={1} mb={0.5}>
-            {value}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" fontWeight={500} sx={{ letterSpacing: "0.03em" }}>
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2.2,
+        borderRadius: 0,
+        border: (t) => `1px solid ${t.palette.divider}`,
+        height: "100%",
+      }}
+    >
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+        <Stack spacing={0.5}>
+          <Typography variant="body2" color="text.secondary" fontWeight={700} sx={{ letterSpacing: "0.04em", textTransform: "uppercase" }}>
             {label}
           </Typography>
+          <Typography variant="h4" fontWeight={800} letterSpacing="-0.03em">
+            {value}
+          </Typography>
+          <Chip label={trend} size="small" sx={{ bgcolor: "rgba(34,197,94,0.12)", color: "#16A34A", fontWeight: 700, width: "fit-content" }} />
+        </Stack>
+        <Box
+          sx={{
+            width: 48,
+            height: 48,
+            borderRadius: 2,
+            display: "grid",
+            placeItems: "center",
+            backgroundColor: color,
+            color: "#fff",
+            boxShadow: `0 10px 30px ${color}30`,
+            flexShrink: 0,
+          }}
+        >
+          {icon}
         </Box>
       </Stack>
     </Paper>
   );
 }
 
-/* ─── TYPE BREAKDOWN ──────────────────────────────────────────── */
-function TypeBreakdown({ requests }) {
-  const typeCounts = requests.reduce((acc, r) => {
-    const key = r.type || "Other";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-  const entries = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-  const total = requests.length;
-  if (entries.length === 0) return null;
+function useRequestAnalytics(requests) {
+  const now = useMemo(() => new Date(), []);
 
-  return (
-    <Paper elevation={0} sx={{
-      p: 3.5, border: "1px solid rgba(255,255,255,0.06)",
-      backgroundColor: "background.paper", borderRadius: "16px", height: "100%",
-    }}>
-      <Typography variant="body1" fontWeight={700} color="text.primary" mb={3}>
-        Requests by Type
-      </Typography>
-      <Box sx={{ display: "flex", borderRadius: "8px", overflow: "hidden", height: 10, mb: 3 }}>
-        {entries.map(([type, count], i) => (
-          <Box key={type} sx={{
-            width: `${(count / total) * 100}%`,
-            backgroundColor: TYPE_COLORS[i % TYPE_COLORS.length],
-          }} />
-        ))}
-      </Box>
-      <Stack spacing={1.5}>
-        {entries.map(([type, count], i) => (
-          <Box key={type} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <Stack direction="row" alignItems="center" spacing={1.5}>
-              <Box sx={{
-                width: 10, height: 10, borderRadius: "3px",
-                backgroundColor: TYPE_COLORS[i % TYPE_COLORS.length], flexShrink: 0,
-              }} />
-              <Typography variant="body2" color="text.secondary">{type}</Typography>
-            </Stack>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" color="text.primary" fontWeight={700}>{count}</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {Math.round((count / total) * 100)}%
-              </Typography>
-            </Stack>
-          </Box>
-        ))}
-      </Stack>
-    </Paper>
+  const stats = useMemo(() => {
+    const totals = { total: requests.length, Pending: 0, Approved: 0, Rejected: 0, Escalated: 0 };
+    requests.forEach((r) => {
+      totals[r.status] = (totals[r.status] || 0) + 1;
+    });
+    return totals;
+  }, [requests]);
+
+  const slaRisks = useMemo(
+    () =>
+      requests
+        .map((r) => {
+          const due = new Date(r.createdAt);
+          due.setHours(due.getHours() + r.slaHours);
+          const remaining = Math.max(0, (due.getTime() - now.getTime()) / 36e5);
+          return { ...r, remaining };
+        })
+        .filter((r) => r.status === "Pending" || r.remaining < 24)
+        .sort((a, b) => a.remaining - b.remaining),
+    [requests, now]
   );
+
+  const timeline = useMemo(() => {
+    const items = [];
+    requests.forEach((r) =>
+      r.timeline?.forEach((t) => {
+        items.push({ ...t, requestId: r.id });
+      })
+    );
+    return items.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 6);
+  }, [requests]);
+
+  return { stats, slaRisks, timeline };
 }
 
-/* ─── URGENCY BREAKDOWN ───────────────────────────────────────── */
-function UrgencyBreakdown({ requests }) {
-  const counts = {
-    HIGH:   requests.filter(r => r.urgency?.toUpperCase() === "HIGH").length,
-    MEDIUM: requests.filter(r => r.urgency?.toUpperCase() === "MEDIUM").length,
-    LOW:    requests.filter(r => r.urgency?.toUpperCase() === "LOW").length,
-  };
-  const total = requests.length || 1;
-
-  return (
-    <Paper elevation={0} sx={{
-      p: 3.5, border: "1px solid rgba(255,255,255,0.06)",
-      backgroundColor: "background.paper", borderRadius: "16px", height: "100%",
-    }}>
-      <Typography variant="body1" fontWeight={700} color="text.primary" mb={3}>
-        Urgency Distribution
-      </Typography>
-      <Stack spacing={2.5}>
-        {Object.entries(counts).map(([urgency, count]) => {
-          const cfg = URGENCY_CONFIG[urgency];
-          const pct = Math.round((count / total) * 100);
-          return (
-            <Box key={urgency}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: cfg.color }} />
-                  <Typography variant="body2" color="text.secondary" fontWeight={500}>{cfg.label}</Typography>
-                </Stack>
-                <Typography variant="body2" fontWeight={700} sx={{ color: cfg.color }}>{count}</Typography>
-              </Box>
-              <Box sx={{ height: 6, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 6, overflow: "hidden" }}>
-                <Box sx={{
-                  height: "100%", width: `${pct}%`,
-                  backgroundColor: cfg.color, borderRadius: 6,
-                  transition: "width 0.6s ease",
-                }} />
-              </Box>
-            </Box>
-          );
-        })}
-      </Stack>
-    </Paper>
-  );
-}
-
-/* ─── REQUEST CARD ────────────────────────────────────────────── */
-function RequestCard({ request, isLast }) {
-  const [expanded, setExpanded] = useState(false);
-  const urgencyCfg = URGENCY_CONFIG[request.urgency?.toUpperCase()] ?? { color: "#7B8DB0", label: request.urgency };
-  const statusCfg  = STATUS_CONFIG[request.status?.toUpperCase()]   ?? { color: "#7B8DB0" };
-
-  return (
-    <>
-      <Box sx={{ transition: "background 0.15s", "&:hover": { backgroundColor: "rgba(255,255,255,0.02)" } }}>
-        <Box sx={{ px: 3.5, py: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
-
-            {/* Left */}
-            <Stack direction="row" spacing={2.5} flex={1} minWidth={0}>
-              {/* Status stripe */}
-              <Box sx={{
-                width: 3, borderRadius: 4, flexShrink: 0,
-                backgroundColor: statusCfg.color, opacity: 0.7,
-                minHeight: 44, alignSelf: "stretch",
-              }} />
-
-              <Box flex={1} minWidth={0}>
-                <Typography variant="body1" fontWeight={600} color="text.primary" mb={0.8} fontSize="1rem">
-                  {request.title}
-                </Typography>
-                <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                  {request.type && (
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <LabelOutlined sx={{ fontSize: 13, color: "text.secondary" }} />
-                      <Typography variant="caption" color="text.secondary">{request.type}</Typography>
-                    </Stack>
-                  )}
-                  {request.urgency && (
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <ErrorOutlineOutlined sx={{ fontSize: 13, color: urgencyCfg.color }} />
-                      <Typography variant="caption" sx={{ color: urgencyCfg.color, fontWeight: 600 }}>
-                        {urgencyCfg.label}
-                      </Typography>
-                    </Stack>
-                  )}
-                  {request.createdAt && (
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <CalendarTodayOutlined sx={{ fontSize: 12, color: "text.secondary" }} />
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(request.createdAt).toLocaleDateString()}
-                      </Typography>
-                    </Stack>
-                  )}
-                  {request.adminComment && (
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <CommentOutlined sx={{ fontSize: 13, color: "#00E5FF" }} />
-                      <Typography variant="caption" sx={{ color: "#00E5FF" }}>Has comment</Typography>
-                    </Stack>
-                  )}
-                </Stack>
-              </Box>
-            </Stack>
-
-            {/* Right */}
-            <Stack direction="row" alignItems="center" spacing={1} flexShrink={0}>
-              <StatusChip status={request.status ?? "PENDING"} />
-              <Box
-                onClick={() => setExpanded(v => !v)}
-                sx={{
-                  cursor: "pointer", color: "text.secondary",
-                  display: "flex", alignItems: "center",
-                  p: 0.5, borderRadius: "6px",
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.06)", color: "text.primary" },
-                  transition: "all 0.15s",
-                }}
-              >
-                {expanded
-                  ? <ExpandLessOutlined sx={{ fontSize: 20 }} />
-                  : <ExpandMoreOutlined sx={{ fontSize: 20 }} />}
-              </Box>
-            </Stack>
-          </Box>
-
-          {/* Expanded */}
-          {expanded && (
-            <Box mt={3} ml={5.5}>
-              {request.description && (
-                <Box mb={2.5}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}
-                    textTransform="uppercase" letterSpacing="0.08em" display="block" mb={1}>
-                    Description
-                  </Typography>
-                  <Typography variant="body2" color="text.primary" lineHeight={1.9} sx={{ maxWidth: 580 }}>
-                    {request.description}
-                  </Typography>
-                </Box>
-              )}
-              {request.adminComment && (
-                <Box sx={{
-                  p: 3, borderRadius: "12px",
-                  backgroundColor: "rgba(0,229,255,0.04)",
-                  border: "1px solid rgba(0,229,255,0.15)",
-                }}>
-                  <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
-                    <CommentOutlined sx={{ fontSize: 15, color: "#00E5FF" }} />
-                    <Typography variant="caption" fontWeight={700} sx={{ color: "#00E5FF" }}
-                      textTransform="uppercase" letterSpacing="0.08em">
-                      Admin Comment
-                    </Typography>
-                  </Stack>
-                  <Typography variant="body2" color="text.primary" lineHeight={1.8}>
-                    {request.adminComment}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          )}
-        </Box>
-      </Box>
-      {!isLast && <Divider sx={{ borderColor: "rgba(255,255,255,0.04)" }} />}
-    </>
-  );
-}
-
-/* ─── MAIN ────────────────────────────────────────────────────── */
 export default function UserDashboard() {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
   const [requests, setRequests] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState("");
-  const { user, logout }        = useAuth();
-  const navigate                = useNavigate();
+  const [filters, setFilters] = useState({ status: "ALL", urgency: "ALL", type: "ALL", q: "" });
+  const [sortBy, setSortBy] = useState("created_desc");
 
   useEffect(() => {
     API.get("/user/requests")
-      .then(res => setRequests(res.data))
-      .catch(err => { console.error(err); setError("Failed to load requests. Please refresh."); })
-      .finally(() => setLoading(false));
+      .then((res) => setRequests(res.data || []))
+      .catch((err) => {
+        console.error(err);
+      });
   }, []);
 
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "??";
+  const normalizedRequests = requests.map((req) => ({
+    ...req,
+    title: req.title || req.requestTitle || req.summary || "Untitled request",
+    type: req.type || req.requestType || req.category || "General",
+    urgency: (req.urgency || req.priority || "MEDIUM").toString().toUpperCase(),
+    priority: req.priority || (req.urgency || "Medium"),
+    stage: req.stage || req.currentStage || req.workflowStage || "In Review",
+    status: normalizeStatus(req.status || req.state),
+    requester: req.requester || req.requestedBy || req.createdBy || "",
+    createdAt: req.createdAt || req.created_date || req.createdOn || req.submittedAt || new Date().toISOString(),
+    slaHours: Number(req.slaHours || req.sla || req.sla_hours || 24),
+    timeline: req.timeline || req.journey || [],
+  }));
 
-  const pending  = requests.filter(r => !r.status || r.status?.toUpperCase() === "PENDING").length;
-  const approved = requests.filter(r => r.status?.toUpperCase() === "APPROVED").length;
-  const rejected = requests.filter(r => r.status?.toUpperCase() === "REJECTED").length;
+  const filteredRequests = normalizedRequests.filter((req) => {
+    const matchesStatus = filters.status === "ALL" || req.status === filters.status;
+    const matchesUrgency = filters.urgency === "ALL" || req.urgency?.toUpperCase() === filters.urgency;
+    const matchesType = filters.type === "ALL" || req.type === filters.type;
+    const matchesSearch =
+      !filters.q ||
+      req.title?.toLowerCase().includes(filters.q.toLowerCase()) ||
+      req.requester?.toLowerCase().includes(filters.q.toLowerCase());
+    return matchesStatus && matchesUrgency && matchesType && matchesSearch;
+  });
 
-  const stats = [
-    { label: "Total Requests", value: requests.length, icon: FolderOutlined,         color: "#7B8DB0" },
-    { label: "Pending",        value: pending,          icon: PendingActionsOutlined, color: "#F59E0B" },
-    { label: "Approved",       value: approved,         icon: CheckCircleOutlined,   color: "#10B981" },
-    { label: "Rejected",       value: rejected,         icon: CancelOutlined,        color: "#EF4444" },
-  ];
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    if (sortBy === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
+    if (sortBy === "priority") return (b.urgency || "").localeCompare(a.urgency || "");
+    if (sortBy === "sla") return (a.slaHours || 0) - (b.slaHours || 0);
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  const { stats, slaRisks, timeline } = useRequestAnalytics(normalizedRequests);
+  const chartBg = theme.palette.mode === "light" ? "#E5E7EB" : "rgba(255,255,255,0.06)";
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH;
+
+  const handleNavigate = (path) => {
+    navigate(path);
+  };
 
   return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyles />
+    <Box sx={{ display: "flex", backgroundColor: "background.default", minHeight: "100vh", overflowX: "hidden" }}>
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((p) => !p)}
+        onLogout={handleLogout}
+        onNavigate={handleNavigate}
+        activePath={location.pathname}
+      />
 
-      <Box sx={{
-        minHeight: "100vh",
-        backgroundColor: "background.default",
-        backgroundImage: `
-          radial-gradient(ellipse 70% 40% at 50% -10%, rgba(0,229,255,0.06) 0%, transparent 60%),
-          linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-        `,
-        backgroundSize: "100% 100%, 60px 60px, 60px 60px",
-        py: 5,
-      }}>
-        <Container maxWidth="lg">
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          ml: { xs: 0, md: `${sidebarWidth}px` },
+          transition: "margin-left 0.22s ease",
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? "radial-gradient(circle at 10% 20%, rgba(99,102,241,0.08), transparent 35%), radial-gradient(circle at 85% 10%, rgba(45,212,191,0.08), transparent 32%)"
+              : "radial-gradient(circle at 12% 18%, rgba(99,102,241,0.08), transparent 30%), radial-gradient(circle at 80% 8%, rgba(16,185,129,0.08), transparent 28%)",
+        }}
+      >
+        <Header onMenuClick={() => setCollapsed((p) => !p)} />
 
-          {/* ── Header ── */}
-          <Paper elevation={0} sx={{
-            p: { xs: 2.5, sm: 3.5 }, mb: 3,
-            border: "1px solid rgba(255,255,255,0.06)",
-            backgroundColor: "background.paper", borderRadius: "18px",
-            display: "flex", alignItems: "center",
-            justifyContent: "space-between",
-            gap: 2, flexWrap: "wrap",
-          }}>
-            <Stack direction="row" alignItems="center" spacing={2.5}>
-              <Avatar sx={{
-                width: 52, height: 52,
-                background: "linear-gradient(135deg, rgba(0,229,255,0.15), rgba(124,58,237,0.15))",
-                border: "1px solid rgba(0,229,255,0.25)",
-                color: "#00E5FF", fontWeight: 800, fontSize: "1.1rem",
-              }}>
-                {initials}
-              </Avatar>
-              <Box>
-                <Typography variant="caption" color="text.secondary" display="block" mb={0.2}>
-                  Signed in as
-                </Typography>
-                <Typography variant="body1" fontWeight={700} color="text.primary">
-                  {user?.email}
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} flexWrap="wrap">
-              <Button
-                variant="contained"
-                startIcon={<AddCircleOutlineOutlined />}
-                onClick={() => navigate("/user/create")}
-                sx={{
-                  background: "linear-gradient(135deg, #00E5FF, #0891B2)",
-                  color: "#080B14", fontWeight: 700,
-                  textTransform: "none", px: 2.5, py: 1,
-                  boxShadow: "0 0 20px rgba(0,229,255,0.2)",
-                  "&:hover": { boxShadow: "0 0 32px rgba(0,229,255,0.35)", transform: "translateY(-1px)" },
-                  transition: "all 0.2s",
-                }}
-              >
-                New Request
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<LogoutOutlined />}
-                onClick={logout}
-                sx={{
-                  borderColor: "rgba(255,255,255,0.1)", color: "text.secondary",
-                  textTransform: "none", px: 2.5, py: 1,
-                  "&:hover": { borderColor: "#EF4444", color: "#EF4444", backgroundColor: "rgba(239,68,68,0.06)" },
-                  transition: "all 0.2s",
-                }}
-              >
-                Sign out
-              </Button>
-            </Stack>
-          </Paper>
-
-          {/* ── Stats ── */}
-          {!loading && !error && (
-            <Grid container spacing={2} mb={3}>
-              {stats.map(s => (
-                <Grid item xs={6} sm={3} key={s.label}>
-                  <StatCard {...s} />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-
-          {/* ── Charts ── */}
-          {!loading && !error && requests.length > 0 && (
-            <Grid container spacing={2} mb={3}>
-              <Grid item xs={12} sm={7}><TypeBreakdown requests={requests} /></Grid>
-              <Grid item xs={12} sm={5}><UrgencyBreakdown requests={requests} /></Grid>
-            </Grid>
-          )}
-
-          {/* ── Requests List ── */}
-          <Paper elevation={0} sx={{
-            border: "1px solid rgba(255,255,255,0.06)",
-            backgroundColor: "background.paper",
-            borderRadius: "18px", overflow: "hidden",
-          }}>
-            <Box sx={{
-              px: 3.5, py: 3,
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <Box>
-                <Typography variant="h6" color="text.primary" fontWeight={700} mb={0.2}>
-                  My Requests
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  All requests submitted by you
-                </Typography>
-              </Box>
-              {!loading && !error && requests.length > 0 && (
-                <Chip
-                  label={`${requests.length} total`}
-                  size="small"
-                  sx={{
-                    backgroundColor: "rgba(255,255,255,0.04)",
-                    color: "text.secondary",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    fontSize: "0.75rem", height: 26, fontWeight: 600,
-                  }}
-                />
-              )}
+        <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} mb={3}>
+            <Box>
+              <Typography variant="h4" fontWeight={800} letterSpacing="-0.03em">
+                My Requests
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Track approvals, SLA risk, and activity across your requests.
+              </Typography>
             </Box>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" startIcon={<History />} color="inherit">
+                Activity
+              </Button>
+              <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => navigate("/user/create")}>
+                Submit New Request
+              </Button>
+            </Stack>
+          </Stack>
 
-            {loading && (
-              <Box display="flex" justifyContent="center" alignItems="center" py={8}>
-                <CircularProgress size={32} sx={{ color: "primary.main" }} />
-              </Box>
-            )}
+          {/* Stats */}
+          <Grid container spacing={2} columns={{ xs: 12, sm: 12, md: 12, lg: 15 }} mb={3} alignItems="stretch">
+            <Grid item xs={12} sm={6} md={4} lg={3}>
+              <StatCard label="Total Requests" value={stats.total} color="#6366F1" icon={<Dashboard />} trend="+6%" />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={3}>
+              <StatCard label="Pending" value={stats.Pending} color="#F59E0B" icon={<PendingActions />} trend="+3%" />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={3}>
+              <StatCard label="Approved" value={stats.Approved} color="#22C55E" icon={<TaskAlt />} trend="+5%" />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={3}>
+              <StatCard label="Rejected" value={stats.Rejected} color="#EF4444" icon={<ErrorOutline />} trend="-1%" />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} lg={3}>
+              <StatCard label="SLA Alerts" value={slaRisks.length} color="#EAB308" icon={<WarningAmber />} trend="+2%" />
+            </Grid>
+          </Grid>
 
-            {error && (
-              <Box p={4}>
-                <Alert severity="error" variant="filled" sx={{ borderRadius: "12px" }}>{error}</Alert>
-              </Box>
-            )}
-
-            {!loading && !error && requests.length === 0 && (
-              <Stack alignItems="center" spacing={2} py={9}>
-                <Box sx={{
-                  width: 64, height: 64, borderRadius: "18px",
-                  backgroundColor: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <InboxOutlined sx={{ fontSize: 28, color: "text.secondary", opacity: 0.5 }} />
-                </Box>
-                <Box textAlign="center">
-                  <Typography variant="body1" color="text.primary" fontWeight={600} mb={0.5}>
-                    No requests yet
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Create your first request to get started
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddCircleOutlineOutlined />}
-                  onClick={() => navigate("/user/create")}
-                  sx={{
-                    borderColor: "rgba(0,229,255,0.3)", color: "#00E5FF",
-                    textTransform: "none", fontWeight: 600,
-                    "&:hover": { borderColor: "#00E5FF", backgroundColor: "rgba(0,229,255,0.06)" },
-                  }}
-                >
-                  Create Request
-                </Button>
+          {/* Quick actions */}
+          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}`, mb: 3 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} alignItems={{ md: "center" }}>
+              <Stack spacing={0.5}>
+                <Typography variant="h6" fontWeight={800}>
+                  Quick Actions
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Launch common requests in one click.
+                </Typography>
               </Stack>
-            )}
-
-            {!loading && !error && requests.map((r, i) => (
-              <RequestCard key={r.id} request={r} isLast={i === requests.length - 1} />
-            ))}
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button variant="contained" startIcon={<AddCircleOutline />} sx={{ minWidth: 200 }} onClick={() => navigate("/user/create")}>
+                  Submit New Request
+                </Button>
+                {QUICK_SHORTCUTS.map((label) => (
+                  <Button key={label} variant="outlined" color="inherit" sx={{ minWidth: 160 }}>
+                    {label}
+                  </Button>
+                ))}
+              </Stack>
+            </Stack>
           </Paper>
 
-        </Container>
+          <Grid container spacing={2} mb={2}>
+            {/* Recent requests table */}
+            <Grid item xs={12} lg={8}>
+              <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}` }}>
+                <Stack spacing={1.5} mb={2}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" fontWeight={800}>
+                      Recent Requests
+                    </Typography>
+                    <Button size="small" variant="outlined" color="inherit">
+                      Refresh
+                    </Button>
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+                    <InputBase
+                      placeholder="Search title or requester"
+                      value={filters.q}
+                      onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+                      sx={{
+                        px: 1.5,
+                        py: 0.8,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        borderRadius: 2,
+                        flex: 1,
+                        backgroundColor: theme.palette.mode === "light" ? "#fff" : "rgba(255,255,255,0.04)",
+                      }}
+                    />
+                    {["status", "urgency", "type"].map((key) => (
+                      <select
+                        key={key}
+                        value={filters[key]}
+                        onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: 10,
+                          border: `1px solid ${theme.palette.divider}`,
+                          background: theme.palette.mode === "light" ? "#fff" : "#0f172a",
+                          color: theme.palette.text.primary,
+                          minWidth: 120,
+                        }}
+                      >
+                        <option value="ALL">All {key}</option>
+                        {key === "status" && ["Pending", "Approved", "Rejected", "Escalated"].map((v) => (
+                          <option value={v} key={v}>{v}</option>
+                        ))}
+                        {key === "urgency" && ["HIGH", "MEDIUM", "LOW"].map((v) => (
+                          <option value={v} key={v}>{v}</option>
+                        ))}
+                        {key === "type" && Array.from(new Set(requests.map((r) => r.type))).map((v) => (
+                          <option value={v} key={v}>{v}</option>
+                        ))}
+                      </select>
+                    ))}
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: `1px solid ${theme.palette.divider}`,
+                        background: theme.palette.mode === "light" ? "#fff" : "#0f172a",
+                        color: theme.palette.text.primary,
+                        minWidth: 140,
+                      }}
+                    >
+                      <option value="created_desc">Newest</option>
+                      <option value="created_asc">Oldest</option>
+                      <option value="priority">Priority</option>
+                      <option value="sla">SLA (Soonest)</option>
+                    </select>
+                  </Stack>
+                </Stack>
+
+                <Box sx={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", minWidth: 920, borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {["Request Title", "Request Type", "Priority", "Status", "Current Stage", "SLA Remaining", "Created"].map((col) => (
+                          <th
+                            key={col}
+                            style={{
+                              textAlign: "left",
+                              padding: "10px 8px",
+                              fontSize: "0.8rem",
+                              color: theme.palette.text.secondary,
+                              borderBottom: `1px solid ${theme.palette.divider}`,
+                            }}
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedRequests.map((req) => {
+                        const slaRemainingHours = (() => {
+                          const due = new Date(req.createdAt);
+                          due.setHours(due.getHours() + req.slaHours);
+                          return Math.max(0, (due.getTime() - Date.now()) / 36e5);
+                        })();
+                        return (
+                          <tr key={req.id} style={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
+                            <td style={{ padding: "12px 8px", fontWeight: 700 }}>{req.title}</td>
+                            <td style={{ padding: "12px 8px" }}>
+                              <Chip label={formatLabel(req.type)} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, borderRadius: 1.5 }} />
+                            </td>
+                            <td style={{ padding: "12px 8px" }}>
+                              <Chip
+                                label={formatLabel(req.priority)}
+                                size="small"
+                                sx={{
+                                  borderRadius: 1.5,
+                                  bgcolor: req.priority === "High" ? "rgba(239,68,68,0.12)" : "rgba(99,102,241,0.12)",
+                                  color: req.priority === "High" ? "#DC2626" : "#4338CA",
+                                  fontWeight: 700,
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: "12px 8px" }}>
+                              <StatusChip status={req.status} />
+                            </td>
+                            <td style={{ padding: "12px 8px", color: theme.palette.text.secondary }}>{req.stage}</td>
+                            <td style={{ padding: "12px 8px" }}>
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={Math.min(100, (1 - Math.min(1, slaRemainingHours / Math.max(1, req.slaHours))) * 100)}
+                                  sx={{
+                                    width: 90,
+                                    height: 6,
+                                    borderRadius: 999,
+                                    backgroundColor: chartBg,
+                                    "& .MuiLinearProgress-bar": {
+                                      background: slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "#22C55E",
+                                    },
+                                  }}
+                                />
+                                <Typography variant="caption" color={slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "text.secondary"}>
+                                  {formatRelativeHours(slaRemainingHours)}
+                                </Typography>
+                              </Stack>
+                            </td>
+                            <td style={{ padding: "12px 8px", color: theme.palette.text.secondary }}>
+                              {new Date(req.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Timeline and SLA cards */}
+            <Grid item xs={12} lg={4}>
+              <Stack spacing={2} alignItems="stretch">
+                <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}`, minHeight: 320, height: "100%" }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" fontWeight={800}>
+                      Request Journey
+                    </Typography>
+                    <Chip label="Live" color="success" size="small" />
+                  </Stack>
+                  <Stack spacing={2.25}>
+                    {timeline.map((item) => (
+                      <Stack key={`${item.id}-${item.time}`} direction="row" spacing={1.5} alignItems="flex-start">
+                        <Avatar sx={{ width: 36, height: 36, bgcolor: "primary.main" }}>{item.actor.charAt(0)}</Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography fontWeight={700} sx={{ lineHeight: 1.2 }}>
+                            {item.actor} • {item.role}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            {new Date(item.time).toLocaleString()}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: "text.primary" }}>
+                            {item.action}: {item.comment}
+                          </Typography>
+                          <Divider sx={{ my: 1.25 }} />
+                        </Box>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Paper>
+
+                <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}`, minHeight: 280, height: "100%" }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" fontWeight={800}>
+                      SLA Indicators
+                    </Typography>
+                    <Chip label={`${slaRisks.length} at risk`} color="warning" size="small" />
+                  </Stack>
+                  <Stack spacing={1.75}>
+                    {slaRisks.map((r) => {
+                      const severity = r.remaining < 8 ? "#EF4444" : "#F59E0B";
+                      return (
+                        <Stack
+                          key={r.id}
+                          direction="row"
+                          alignItems="center"
+                          spacing={1.25}
+                          sx={{
+                            p: 1.25,
+                            borderRadius: 2,
+                            border: (t) => `1px solid ${t.palette.divider}`,
+                            backgroundColor: theme.palette.mode === "light" ? "rgba(254,240,138,0.18)" : "rgba(251,191,36,0.12)",
+                          }}
+                        >
+                          <WarningAmber sx={{ color: severity }} />
+                          <Box sx={{ flex: 1 }}>
+                            <Typography fontWeight={700} lineHeight={1.2}>
+                              {r.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Stage: {r.stage} • {r.requester}
+                            </Typography>
+                          </Box>
+                          <Chip label={formatRelativeHours(r.remaining)} size="small" sx={{ bgcolor: "rgba(0,0,0,0.04)", color: severity, fontWeight: 700, borderRadius: 1.5 }} />
+                        </Stack>
+                      );
+                    })}
+                    {!slaRisks.length && (
+                      <Typography variant="body2" color="text.secondary">
+                        All requests are within SLA.
+                      </Typography>
+                    )}
+                  </Stack>
+                </Paper>
+              </Stack>
+            </Grid>
+          </Grid>
+        </Box>
       </Box>
-    </ThemeProvider>
+    </Box>
   );
 }

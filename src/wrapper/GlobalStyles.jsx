@@ -6,7 +6,7 @@ export default function GlobalStyles() {
 
       *, *::before, *::after { box-sizing: border-box; margin: 0; }
       html { scroll-behavior: smooth; }
-      body { background-color: #080B14; }
+      body { min-height: 100vh; }
 
       @keyframes fadeSlideDown {
         from { opacity: 0; transform: translateY(-20px); }

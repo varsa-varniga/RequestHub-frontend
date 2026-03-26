@@ -6,11 +6,18 @@ import LandingPage    from "./pages/LandingPage";
 import UserDashboard  from "./pages/UserDashboard";
 import CreateRequest  from "./pages/CreateRequest";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProfilePage from "./pages/ProfilePage";
+import HelpSupportPage from "./pages/HelpSupportPage";
+import MyRequestsPage from "./pages/MyRequestsPage";
+import RequestJourneyPage from "./pages/RequestJourneyPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import GlobalStyles from "./wrapper/GlobalStyles";
 
 function App() {
   return (
-    <Routes>
+    <>
+      <GlobalStyles />
+      <Routes>
       {/* ── Public ────────────────────────────────── */}
       <Route path="/"         element={<LandingPage />} />
       <Route path="/login"    element={<Login />} />
@@ -33,6 +40,38 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/user/requests"
+        element={
+          <ProtectedRoute allowedRoles={["USER"]}>
+            <MyRequestsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user/requests/:id"
+        element={
+          <ProtectedRoute allowedRoles={["USER"]}>
+            <RequestJourneyPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user/profile"
+        element={
+          <ProtectedRoute allowedRoles={["USER"]}>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/help"
+        element={
+          <ProtectedRoute allowedRoles={["USER", "ADMIN"]}>
+            <HelpSupportPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* ── Admin (protected) ─────────────────────── */}
       <Route
@@ -47,6 +86,7 @@ function App() {
       {/* ── Fallback ──────────────────────────────── */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+  </>
   );
 }
 

@@ -17,21 +17,6 @@ import {
   Typography,
 } from "@mui/material";
 import { Visibility, VisibilityOff, LockOutlined, PersonAdd } from "@mui/icons-material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: { main: "#F59E0B" },
-    background: { default: "#0A0A0F", paper: "#13131A" },
-    text: { primary: "#F1F0EE", secondary: "#7A7A8C" },
-  },
-  typography: {
-    fontFamily: "'DM Sans', sans-serif",
-    h4: { fontFamily: "'Playfair Display', serif", fontWeight: 700 },
-  },
-  shape: { borderRadius: 12 },
-});
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -93,7 +78,7 @@ export default function Login() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <Box
         sx={{
           minHeight: "100vh",
@@ -241,6 +226,6 @@ export default function Login() {
           {error}
         </Alert>
       </Snackbar>
-    </ThemeProvider>
+    </>
   );
 }

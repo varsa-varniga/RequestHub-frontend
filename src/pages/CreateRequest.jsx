@@ -26,45 +26,6 @@ import {
   RemoveOutlined,
   DragHandleOutlined,
 } from "@mui/icons-material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: { main: "#F59E0B" },
-    background: { default: "#0A0A0F", paper: "#13131A" },
-    text: { primary: "#F1F0EE", secondary: "#7A7A8C" },
-  },
-  typography: {
-    fontFamily: "'DM Sans', sans-serif",
-    h5: { fontFamily: "'Playfair Display', serif", fontWeight: 700 },
-  },
-  shape: { borderRadius: 12 },
-  components: {
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": {
-            backgroundColor: "#1C1C26",
-            "& fieldset": { borderColor: "#2A2A38" },
-            "&:hover fieldset": { borderColor: "#F59E0B88" },
-            "&.Mui-focused fieldset": { borderColor: "#F59E0B" },
-          },
-        },
-      },
-    },
-    MuiSelect: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "#1C1C26",
-          "& .MuiOutlinedInput-notchedOutline": { borderColor: "#2A2A38" },
-          "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#F59E0B88" },
-          "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#F59E0B" },
-        },
-      },
-    },
-  },
-});
 
 const URGENCY_OPTIONS = [
   { value: "LOW",    label: "Low",    icon: <RemoveOutlined fontSize="small" />,    color: "#10B981" },
@@ -104,7 +65,7 @@ export default function CreateRequest() {
   const activeUrgency = URGENCY_OPTIONS.find((o) => o.value === req.urgency);
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');`}</style>
 
       <Box
@@ -305,6 +266,6 @@ export default function CreateRequest() {
           {snack.message}
         </Alert>
       </Snackbar>
-    </ThemeProvider>
+    </>
   );
 }
