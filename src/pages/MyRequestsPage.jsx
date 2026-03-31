@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import API from "../api/api";
+import { mapRequestDto } from "../utils/requestUtils";
 
 const MOCK_REQUESTS = [
   {
@@ -80,27 +81,7 @@ export default function MyRequestsPage() {
 
   const normalizedRequests = useMemo(
     () =>
-      requests.map((req) => {
-        const rawPriority = (req.priority || req.urgency || "Medium").toString();
-        const rawStatus = (req.status || req.state || "Pending").toString();
-        const priority =
-          rawPriority.toLowerCase().includes("high") ? "High" :
-          rawPriority.toLowerCase().includes("low") ? "Low" : "Medium";
-        const status =
-          rawStatus.toLowerCase().includes("approve") ? "Approved" :
-          rawStatus.toLowerCase().includes("reject") ? "Rejected" :
-          rawStatus.toLowerCase().includes("escalat") ? "Escalated" : "Pending";
-        return {
-          ...req,
-          id: req.id || req.requestId || req.ticketId || "REQ-000",
-          title: req.title || req.requestTitle || req.summary || "Untitled request",
-          type: req.type || req.requestType || req.category || "General",
-          priority,
-          status,
-          stage: req.stage || req.currentStage || req.workflowStage || "In Review",
-          createdAt: req.createdAt || req.created_date || req.createdOn || req.submittedAt || new Date().toISOString(),
-        };
-      }),
+      requests.map((req) => mapRequestDto(req)),
     [requests]
   );
 
@@ -204,7 +185,7 @@ export default function MyRequestsPage() {
                     key={req.id}
                     hover
                     sx={{ cursor: "pointer" }}
-                    onClick={() => navigate(`/user/requests/${req.id}`)}
+                    onClick={() => navigate(`/requests/${req.id}`)}
                   >
                     <TableCell>
                       <Typography variant="body2" color="text.secondary" fontWeight={700}>
@@ -214,7 +195,7 @@ export default function MyRequestsPage() {
                     <TableCell>
                       <Typography fontWeight={700}>{req.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {req.stage}
+                        {req.stageLabel}
                       </Typography>
                     </TableCell>
                     <TableCell>

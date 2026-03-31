@@ -1,5 +1,6 @@
 // src/pages/CreateRequest.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api/api";
 import {
   Alert,
@@ -22,6 +23,7 @@ import {
 } from "@mui/material";
 import {
   AddCircleOutlineOutlined,
+  ArrowBack,
   ArrowUpwardOutlined,
   RemoveOutlined,
   DragHandleOutlined,
@@ -33,25 +35,54 @@ const URGENCY_OPTIONS = [
   { value: "HIGH",   label: "High",   icon: <ArrowUpwardOutlined fontSize="small" />, color: "#EF4444" },
 ];
 
-const REQUEST_TYPES = ["Bug Report", "Feature Request", "Access", "Support", "Other"];
+const FALLBACK_TYPES = ["IT", "LEAVE", "EXPENSE", "PURCHASE", "ACCESS"];
+const TYPE_LABELS = {
+  IT: "IT",
+  LEAVE: "Leave",
+  EXPENSE: "Expense",
+  PURCHASE: "Purchase",
+  ACCESS: "Access",
+};
 
 const EMPTY = { title: "", description: "", type: "", urgency: "LOW" };
 
 export default function CreateRequest() {
+  const navigate = useNavigate();
   const [req, setReq] = useState(EMPTY);
+  const [types, setTypes] = useState(FALLBACK_TYPES);
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, severity: "success", message: "" });
 
   const set = (field) => (e) => setReq((prev) => ({ ...prev, [field]: e.target.value }));
 
+  useEffect(() => {
+    API.get("/workflows")
+      .then((res) => {
+        const workflowTypes = (res.data || []).map((w) => w.requestType).filter(Boolean);
+        const merged = Array.from(new Set([...FALLBACK_TYPES, ...workflowTypes]));
+        setTypes(merged);
+        setReq((prev) => ({ ...prev, type: prev.type || merged[0] }));
+      })
+      .catch(() => {
+        setTypes(FALLBACK_TYPES);
+        setReq((prev) => ({ ...prev, type: prev.type || FALLBACK_TYPES[0] }));
+      });
+  }, []);
+
   const submit = async () => {
-    if (!req.title.trim() || !req.type) {
+    const requestTypeCode = (req.type || "").trim().toUpperCase();
+    if (!req.title.trim() || !requestTypeCode) {
       setSnack({ open: true, severity: "error", message: "Title and type are required." });
       return;
     }
     setLoading(true);
     try {
-      await API.post("/user/requests", req);
+      await API.post("/user/requests", {
+        title: req.title.trim(),
+        description: req.description,
+        requestTypeCode,
+        urgency: req.urgency,
+      });
       setSnack({ open: true, severity: "success", message: "Request submitted successfully!" });
       setReq(EMPTY);
     } catch (err) {
@@ -101,6 +132,18 @@ export default function CreateRequest() {
                 gap: 1.5,
               }}
             >
+              <Button
+                onClick={() => navigate(-1)}
+                variant="text"
+                sx={{
+                  minWidth: 0,
+                  px: 1,
+                  color: "text.secondary",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <ArrowBack fontSize="small" />
+              </Button>
               <Box
                 sx={{
                   width: 36,
@@ -149,29 +192,15 @@ export default function CreateRequest() {
 
               <FormControl fullWidth required>
                 <InputLabel>Type</InputLabel>
-                <Select
-                  value={req.type}
-                  label="Type"
-                  onChange={set("type")}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        backgroundColor: "#1C1C26",
-                        border: "1px solid #2A2A38",
-                        mt: 0.5,
-                      },
-                    },
-                  }}
-                >
-                  {REQUEST_TYPES.map((t) => (
-                    <MenuItem
-                      key={t}
-                      value={t}
-                      sx={{ "&:hover": { backgroundColor: "#F59E0B14" } }}
-                    >
-                      {t}
-                    </MenuItem>
-                  ))}
+                <Select value={req.type} label="Type" onChange={set("type")}>
+                  {types.map((t) => {
+                    const code = String(t || "").toUpperCase();
+                    return (
+                      <MenuItem key={code} value={code}>
+                        {TYPE_LABELS[code] || code}
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
 

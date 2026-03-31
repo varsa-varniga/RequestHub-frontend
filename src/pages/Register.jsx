@@ -71,13 +71,12 @@ export default function Register() {
             />
             <FormControl fullWidth>
               <InputLabel>Role</InputLabel>
-              <Select
-                value={form.role}
-                label="Role"
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
-              >
-                <MenuItem value="USER">USER</MenuItem>
-                <MenuItem value="ADMIN">ADMIN</MenuItem>
+              <Select value={form.role} label="Role" onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                {["USER", "ADMIN", "MANAGER", "IT", "COMPLIANCE"].map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {role}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <Button type="submit" variant="contained" color="primary" fullWidth sx={{ height: 48 }}>

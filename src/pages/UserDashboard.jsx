@@ -46,7 +46,9 @@ import {
   History,
   Person,
   Logout,
+  CheckCircle,
 } from "@mui/icons-material";
+import { computeSlaRemainingHours, mapRequestDto } from "../utils/requestUtils";
 
 const SIDEBAR_WIDTH = 264;
 const SIDEBAR_COLLAPSED = 86;
@@ -55,7 +57,7 @@ const NAV_ITEMS = [
   { label: "Dashboard", path: "/user/dashboard", icon: <Dashboard fontSize="small" /> },
   { label: "Submit Request", path: "/user/create", icon: <AddCircleOutline fontSize="small" /> },
   { label: "My Requests", path: "/user/requests", icon: <ListAlt fontSize="small" /> },
-  { label: "Notifications", path: "/user/notifications", icon: <NotificationsNone fontSize="small" /> },
+  { label: "My Approvals", path: "/user/approvals", icon: <CheckCircle fontSize="small" /> },
   { label: "Help / Support", path: "/help", icon: <HelpOutline fontSize="small" /> },
 ];
 
@@ -66,7 +68,7 @@ const STATUS_CONFIG = {
   Escalated: { color: "#EAB308", bg: "rgba(234,179,8,0.14)" },
 };
 
-const QUICK_SHORTCUTS = ["IT Access", "Hardware Request", "Compliance Request"];
+
 
 function formatRelativeHours(hours) {
   if (hours <= 0) return "Due now";
@@ -77,12 +79,12 @@ function formatRelativeHours(hours) {
   return `${days}d ${rem}h`;
 }
 
-function Sidebar({ collapsed, onToggle, onLogout, onNavigate, activePath }) {
+function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePath }) {
   return (
     <Paper
       elevation={0}
       sx={{
-        width: collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH,
+        width: isMobile ? (collapsed ? 0 : SIDEBAR_WIDTH) : collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH,
         height: "100vh",
         position: "fixed",
         top: 0,
@@ -94,6 +96,8 @@ function Sidebar({ collapsed, onToggle, onLogout, onNavigate, activePath }) {
         transition: "width 0.22s ease",
         zIndex: 1200,
         overflow: "hidden",
+        transform: isMobile && collapsed ? "translateX(-100%)" : "translateX(0)",
+        transitionProperty: "width, transform",
       }}
     >
       <Box sx={{ px: collapsed ? 2 : 3, pt: 3, pb: 2, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between" }}>
@@ -191,7 +195,7 @@ function Header({ onMenuClick }) {
     >
       <Stack direction="row" alignItems="center" spacing={2} justifyContent="space-between">
         <Stack direction="row" alignItems="center" spacing={1.5}>
-          {(isMobile || true) && (
+          {isMobile && (
             <IconButton onClick={onMenuClick} size="small" sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
               <MenuIcon />
             </IconButton>
@@ -206,7 +210,7 @@ function Header({ onMenuClick }) {
               minWidth: 260,
             }}
           >
-            <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} alignItems="center">
               <Search sx={{ color: "text.secondary", fontSize: 20 }} />
               <InputBase placeholder="Search requests, people, teams..." sx={{ flex: 1 }} />
               <Chip label="Cmd K" size="small" variant="outlined" sx={{ fontSize: "0.75rem", height: 24, borderRadius: 1.2 }} />
@@ -221,13 +225,7 @@ function Header({ onMenuClick }) {
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Notifications">
-            <IconButton sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
-              <Badge color="warning" variant="dot">
-                <NotificationsNone />
-              </Badge>
-            </IconButton>
-          </Tooltip>
+          
 
           <Avatar
             sx={{
@@ -274,14 +272,6 @@ function StatusChip({ status }) {
     />
   );
 }
-
-const normalizeStatus = (value) => {
-  const raw = (value || "Pending").toString().toLowerCase();
-  if (raw.includes("approve")) return "Approved";
-  if (raw.includes("reject")) return "Rejected";
-  if (raw.includes("escalat")) return "Escalated";
-  return "Pending";
-};
 
 const formatLabel = (value) => {
   if (!value) return "";
@@ -345,10 +335,10 @@ function useRequestAnalytics(requests) {
     () =>
       requests
         .map((r) => {
-          const due = new Date(r.createdAt);
-          due.setHours(due.getHours() + r.slaHours);
-          const remaining = Math.max(0, (due.getTime() - now.getTime()) / 36e5);
-          return { ...r, remaining };
+          const remaining = r.slaDeadline
+            ? computeSlaRemainingHours(r.slaDeadline)
+            : Math.max(0, (new Date(r.createdAt).getTime() + r.slaHours * 3600 * 1000 - now.getTime()) / 36e5);
+          return { ...r, remaining: remaining == null ? 0 : remaining };
         })
         .filter((r) => r.status === "Pending" || r.remaining < 24)
         .sort((a, b) => a.remaining - b.remaining),
@@ -373,10 +363,12 @@ export default function UserDashboard() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const location = useLocation();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [collapsed, setCollapsed] = useState(false);
   const [requests, setRequests] = useState([]);
   const [filters, setFilters] = useState({ status: "ALL", urgency: "ALL", type: "ALL", q: "" });
   const [sortBy, setSortBy] = useState("created_desc");
+  const REQUEST_TYPES = ["IT", "LEAVE", "EXPENSE", "PURCHASE", "ACCESS"];
 
   useEffect(() => {
     API.get("/user/requests")
@@ -387,16 +379,7 @@ export default function UserDashboard() {
   }, []);
 
   const normalizedRequests = requests.map((req) => ({
-    ...req,
-    title: req.title || req.requestTitle || req.summary || "Untitled request",
-    type: req.type || req.requestType || req.category || "General",
-    urgency: (req.urgency || req.priority || "MEDIUM").toString().toUpperCase(),
-    priority: req.priority || (req.urgency || "Medium"),
-    stage: req.stage || req.currentStage || req.workflowStage || "In Review",
-    status: normalizeStatus(req.status || req.state),
-    requester: req.requester || req.requestedBy || req.createdBy || "",
-    createdAt: req.createdAt || req.created_date || req.createdOn || req.submittedAt || new Date().toISOString(),
-    slaHours: Number(req.slaHours || req.sla || req.sla_hours || 24),
+    ...mapRequestDto(req),
     timeline: req.timeline || req.journey || [],
   }));
 
@@ -414,7 +397,7 @@ export default function UserDashboard() {
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     if (sortBy === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
     if (sortBy === "priority") return (b.urgency || "").localeCompare(a.urgency || "");
-    if (sortBy === "sla") return (a.slaHours || 0) - (b.slaHours || 0);
+    if (sortBy === "sla") return (computeSlaRemainingHours(a.slaDeadline) || 0) - (computeSlaRemainingHours(b.slaDeadline) || 0);
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
@@ -426,7 +409,7 @@ export default function UserDashboard() {
     navigate("/login");
   };
 
-  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH;
+  const sidebarWidth = isMobile ? 0 : (collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH);
 
   const handleNavigate = (path) => {
     navigate(path);
@@ -436,6 +419,7 @@ export default function UserDashboard() {
     <Box sx={{ display: "flex", backgroundColor: "background.default", minHeight: "100vh", overflowX: "hidden" }}>
       <Sidebar
         collapsed={collapsed}
+        isMobile={isMobile}
         onToggle={() => setCollapsed((p) => !p)}
         onLogout={handleLogout}
         onNavigate={handleNavigate}
@@ -496,28 +480,7 @@ export default function UserDashboard() {
           </Grid>
 
           {/* Quick actions */}
-          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}`, mb: 3 }}>
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} alignItems={{ md: "center" }}>
-              <Stack spacing={0.5}>
-                <Typography variant="h6" fontWeight={800}>
-                  Quick Actions
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Launch common requests in one click.
-                </Typography>
-              </Stack>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                <Button variant="contained" startIcon={<AddCircleOutline />} sx={{ minWidth: 200 }} onClick={() => navigate("/user/create")}>
-                  Submit New Request
-                </Button>
-                {QUICK_SHORTCUTS.map((label) => (
-                  <Button key={label} variant="outlined" color="inherit" sx={{ minWidth: 160 }}>
-                    {label}
-                  </Button>
-                ))}
-              </Stack>
-            </Stack>
-          </Paper>
+          
 
           <Grid container spacing={2} mb={2}>
             {/* Recent requests table */}
@@ -567,7 +530,7 @@ export default function UserDashboard() {
                         {key === "urgency" && ["HIGH", "MEDIUM", "LOW"].map((v) => (
                           <option value={v} key={v}>{v}</option>
                         ))}
-                        {key === "type" && Array.from(new Set(requests.map((r) => r.type))).map((v) => (
+                        {key === "type" && REQUEST_TYPES.map((v) => (
                           <option value={v} key={v}>{v}</option>
                         ))}
                       </select>
@@ -613,15 +576,17 @@ export default function UserDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedRequests.map((req) => {
-                        const slaRemainingHours = (() => {
-                          const due = new Date(req.createdAt);
-                          due.setHours(due.getHours() + req.slaHours);
-                          return Math.max(0, (due.getTime() - Date.now()) / 36e5);
-                        })();
-                        return (
-                          <tr key={req.id} style={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
-                            <td style={{ padding: "12px 8px", fontWeight: 700 }}>{req.title}</td>
+                    {sortedRequests.map((req) => {
+                      const slaRemainingHours = computeSlaRemainingHours(req.slaDeadline);
+                      return (
+                          <tr
+                            key={req.id}
+                            style={{ borderBottom: `1px solid ${theme.palette.divider}`, cursor: "pointer" }}
+                            onClick={() => navigate(`/requests/${req.id}`)}
+                          >
+                            <td style={{ padding: "12px 8px", fontWeight: 700 }}>
+                              {req.title}
+                            </td>
                             <td style={{ padding: "12px 8px" }}>
                               <Chip label={formatLabel(req.type)} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, borderRadius: 1.5 }} />
                             </td>
@@ -645,7 +610,11 @@ export default function UserDashboard() {
                               <Stack direction="row" spacing={1} alignItems="center">
                                 <LinearProgress
                                   variant="determinate"
-                                  value={Math.min(100, (1 - Math.min(1, slaRemainingHours / Math.max(1, req.slaHours))) * 100)}
+                                  value={
+                                    slaRemainingHours == null
+                                      ? 0
+                                      : Math.min(100, (1 - Math.min(1, slaRemainingHours / Math.max(1, req.slaHours))) * 100)
+                                  }
                                   sx={{
                                     width: 90,
                                     height: 6,
@@ -657,7 +626,7 @@ export default function UserDashboard() {
                                   }}
                                 />
                                 <Typography variant="caption" color={slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "text.secondary"}>
-                                  {formatRelativeHours(slaRemainingHours)}
+                                  {slaRemainingHours == null ? "—" : formatRelativeHours(slaRemainingHours)}
                                 </Typography>
                               </Stack>
                             </td>
@@ -676,34 +645,6 @@ export default function UserDashboard() {
             {/* Timeline and SLA cards */}
             <Grid item xs={12} lg={4}>
               <Stack spacing={2} alignItems="stretch">
-                <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}`, minHeight: 320, height: "100%" }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6" fontWeight={800}>
-                      Request Journey
-                    </Typography>
-                    <Chip label="Live" color="success" size="small" />
-                  </Stack>
-                  <Stack spacing={2.25}>
-                    {timeline.map((item) => (
-                      <Stack key={`${item.id}-${item.time}`} direction="row" spacing={1.5} alignItems="flex-start">
-                        <Avatar sx={{ width: 36, height: 36, bgcolor: "primary.main" }}>{item.actor.charAt(0)}</Avatar>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography fontWeight={700} sx={{ lineHeight: 1.2 }}>
-                            {item.actor} • {item.role}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                            {new Date(item.time).toLocaleString()}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: "text.primary" }}>
-                            {item.action}: {item.comment}
-                          </Typography>
-                          <Divider sx={{ my: 1.25 }} />
-                        </Box>
-                      </Stack>
-                    ))}
-                  </Stack>
-                </Paper>
-
                 <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}`, minHeight: 280, height: "100%" }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
                     <Typography variant="h6" fontWeight={800}>

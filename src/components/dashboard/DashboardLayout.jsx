@@ -35,6 +35,7 @@ import {
   Search as SearchIcon,
   AddCircleOutline as AddCircleOutlineIcon,
   ListAlt as ListAltIcon,
+  CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../context/AuthContext";
 import { useThemeMode } from "../../context/ThemeContext";
@@ -43,7 +44,7 @@ const NAV_ITEMS = [
   { label: "Dashboard", path: "/user/dashboard", icon: <DashboardIcon fontSize="small" /> },
   { label: "Submit Request", path: "/user/create", icon: <AddCircleOutlineIcon fontSize="small" /> },
   { label: "My Requests", path: "/user/requests", icon: <ListAltIcon fontSize="small" /> },
-  { label: "Notifications", path: "/user/notifications", icon: <NotificationsIcon fontSize="small" /> },
+  { label: "My Approvals", path: "/user/approvals", icon: <CheckCircleIcon fontSize="small" /> },
   { label: "Profile", path: "/user/profile", icon: <PersonIcon fontSize="small" /> },
   { label: "Help / Support", path: "/help", icon: <HelpIcon fontSize="small" /> },
 ];
