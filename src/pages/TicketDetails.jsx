@@ -30,6 +30,7 @@ import {
   Cancel,
   CheckCircle,
   EscalatorWarning,
+  Delete,
   PriorityHigh,
   RadioButtonUnchecked,
   Refresh,
@@ -158,6 +159,9 @@ export default function TicketDetails() {
   const [decisionLoading, setDecisionLoading] = useState(false);
   const [decisionError, setDecisionError] = useState("");
   const [decisionSuccess, setDecisionSuccess] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -228,6 +232,20 @@ export default function TicketDetails() {
     setDecisionError("");
     setDecisionSuccess("");
     setDecisionDialog({ open: true, decision: d });
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    setDeleteError("");
+    try {
+      await API.delete(`/user/requests/${id}`);
+      navigate("/user/requests");
+    } catch (err) {
+      setDeleteError(err?.response?.data?.message || "Failed to delete request.");
+    } finally {
+      setDeleteLoading(false);
+      setDeleteOpen(false);
+    }
   };
 
   const handleDecision = async (decision, comment) => {
@@ -348,6 +366,17 @@ export default function TicketDetails() {
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end">
+                {isRequester && !isFinalStatus && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    startIcon={<Delete />}
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    Delete
+                  </Button>
+                )}
                 {ticket.priorityScore != null && (
                   <Chip icon={<PriorityHigh />} label={`Score: ${ticket.priorityScore}`} color="primary" />
                 )}
@@ -366,6 +395,7 @@ export default function TicketDetails() {
 
           {decisionSuccess && <Alert severity="success" sx={{ mt: 2 }}>{decisionSuccess}</Alert>}
           {decisionError && <Alert severity="error" sx={{ mt: 2 }}>{decisionError}</Alert>}
+          {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{deleteError}</Alert>}
 
           <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", md: "300px 1fr" }, gap: 2 }}>
             <Paper sx={{ p: 2, borderRadius: 0, bgcolor: "#fff", boxShadow: "0 2px 4px rgba(0,0,0,0.12)" }}>
@@ -578,6 +608,28 @@ export default function TicketDetails() {
             onConfirm={handleDecision}
             loading={decisionLoading}
           />
+          <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
+            <DialogTitle sx={{ fontWeight: 700 }}>Delete Request</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" color="text.secondary">
+                This will permanently delete the request. Are you sure?
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ p: 2, gap: 1 }}>
+              <Button onClick={() => setDeleteOpen(false)} disabled={deleteLoading}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                startIcon={deleteLoading ? <CircularProgress size={16} /> : <Delete />}
+              >
+                {deleteLoading ? "Deleting…" : "Delete"}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Container>
       </Box>
     </DashboardLayout>

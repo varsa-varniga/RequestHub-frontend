@@ -45,7 +45,10 @@ export default function Login() {
           headers: { Authorization: `Basic ${token}` },
         });
 
-        const role = res.data.role || "USER";
+        const role = (res.data.role || (Array.isArray(res.data.roles) ? res.data.roles[0] : null) || (Array.isArray(res.data.authorities) ? res.data.authorities[0] : null) || res.data.authority || "USER")
+          .toString()
+          .toUpperCase()
+          .replace(/^ROLE_/, "");
 
         // Store user info in context
         login(token, res.data);
@@ -168,6 +171,19 @@ export default function Login() {
                   ),
                 }}
               />
+
+              {isLogin && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  textAlign="right"
+                  sx={{ cursor: "pointer", "&:hover": { color: "primary.main" } }}
+                  onClick={() => navigate("/forgot-password")}
+                >
+                  Forgot password?
+                </Typography>
+              )}
 
               {!isLogin && (
                 <>

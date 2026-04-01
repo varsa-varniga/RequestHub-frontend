@@ -3,6 +3,7 @@ import { Box, Chip, Container, Grid, Stack, Typography } from "@mui/material";
 import FadeIn from "../../wrapper/FadeIn";
 import { TECH } from "../../constant/landingData";
 
+
 export default function TechStack() {
   return (
     <Box
@@ -32,6 +33,7 @@ export default function TechStack() {
             </Typography>
           </Stack>
         </FadeIn>
+
 
         <Grid container spacing={2.5} justifyContent="center">
           {TECH.map((tech, i) => (

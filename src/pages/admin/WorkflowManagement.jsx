@@ -79,17 +79,27 @@ export default function WorkflowManagement() {
       return;
     }
 
+    const workflowName = form.name.trim();
+    const selectedRequestType = form.requestType.trim();
+    const stages = form.stages.map((stage, idx) => ({
+      stageName: stage.stageName.trim(),
+      approverRole: stage.approverRole.trim() || null,
+      stageOrder: Number(stage.stageOrder) || idx + 1,
+      assignedUserIds: (stage.assignedUserIds || [])
+        .map((v) => Number(v))
+        .filter((v) => Number.isFinite(v)),
+    }));
+
+    console.log("Workflow payload:", {
+      name: workflowName,
+      requestTypeCode: selectedRequestType,
+      stages: stages,
+    });
+
     const payload = {
-      name: form.name.trim(),
-      requestType: form.requestType.trim(),
-      stages: form.stages.map((stage, idx) => ({
-        stageName: stage.stageName.trim(),
-        approverRole: stage.approverRole.trim() || null,
-        stageOrder: Number(stage.stageOrder) || idx + 1,
-        assignedUserIds: (stage.assignedUserIds || [])
-          .map((v) => Number(v))
-          .filter((v) => Number.isFinite(v)),
-      })),
+      name: workflowName,
+      requestTypeCode: selectedRequestType,
+      stages: stages,
     };
 
     setSaving(true);

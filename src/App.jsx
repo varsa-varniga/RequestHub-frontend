@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login          from "./pages/Login";
 import Register       from "./pages/Register";
 import LandingPage    from "./pages/LandingPage";
+import ForgotPassword from "./pages/ForgotPassword";
 import UserDashboard  from "./pages/UserDashboard";
 import CreateRequest  from "./pages/CreateRequest";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -21,6 +22,8 @@ import MyRequestsPage from "./pages/MyRequestsPage";
 import RequestJourneyPage from "./pages/RequestJourneyPage";
 import UserApprovals from "./pages/UserApprovals";
 import TicketDetails from "./pages/TicketDetails";
+import NotificationsPage from "./pages/NotificationsPage";
+import AdminNotifications from "./pages/admin/Notifications";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GlobalStyles from "./wrapper/GlobalStyles";
 
@@ -33,6 +36,7 @@ function App() {
       <Route path="/"         element={<LandingPage />} />
       <Route path="/login"    element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* ── User (protected) ──────────────────────── */}
       <Route
@@ -92,6 +96,14 @@ function App() {
         }
       />
       <Route
+        path="/user/notifications"
+        element={
+          <ProtectedRoute allowedRoles={["USER", "MANAGER", "IT", "COMPLIANCE"]}>
+            <NotificationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/help"
         element={
           <ProtectedRoute allowedRoles={["USER", "ADMIN", "MANAGER", "IT", "COMPLIANCE"]}>
@@ -119,6 +131,7 @@ function App() {
         <Route path="reports" element={<AdminReportsAnalytics />} />
         <Route path="audit-logs" element={<AdminAuditLogs />} />
         <Route path="profile" element={<AdminProfile />} />
+        <Route path="notifications" element={<AdminNotifications />} />
       </Route>
 
       {/* ── Fallback ──────────────────────────────── */}

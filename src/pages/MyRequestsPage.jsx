@@ -76,7 +76,10 @@ export default function MyRequestsPage() {
   useEffect(() => {
     API.get("/user/requests")
       .then((res) => setRequests(res.data || []))
-      .catch(() => setRequests(MOCK_REQUESTS));
+      .catch((err) => {
+        console.error(err);
+        setRequests([]);
+      });
   }, []);
 
   const normalizedRequests = useMemo(

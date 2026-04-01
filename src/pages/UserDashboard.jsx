@@ -49,9 +49,12 @@ import {
   CheckCircle,
 } from "@mui/icons-material";
 import { computeSlaRemainingHours, mapRequestDto } from "../utils/requestUtils";
+import { useUnreadNotificationsCount } from "../hooks/useNotifications";
+
 
 const SIDEBAR_WIDTH = 264;
 const SIDEBAR_COLLAPSED = 86;
+
 
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/user/dashboard", icon: <Dashboard fontSize="small" /> },
@@ -61,12 +64,16 @@ const NAV_ITEMS = [
   { label: "Help / Support", path: "/help", icon: <HelpOutline fontSize="small" /> },
 ];
 
+
 const STATUS_CONFIG = {
   Pending: { color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
   Approved: { color: "#22C55E", bg: "rgba(34,197,94,0.12)" },
   Rejected: { color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
   Escalated: { color: "#EAB308", bg: "rgba(234,179,8,0.14)" },
 };
+
+
+
 
 
 
@@ -78,6 +85,7 @@ function formatRelativeHours(hours) {
   const rem = Math.round(hours % 24);
   return `${days}d ${rem}h`;
 }
+
 
 function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePath }) {
   return (
@@ -100,8 +108,26 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
         transitionProperty: "width, transform",
       }}
     >
-      <Box sx={{ px: collapsed ? 2 : 3, pt: 3, pb: 2, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between" }}>
-        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ opacity: collapsed ? 0 : 1, transition: "opacity 0.22s ease" }}>
+      <Box
+        sx={{
+          px: 2,
+          pt: 3,
+          pb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "space-between",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.25}
+          sx={{
+            opacity: collapsed ? 0 : 1,
+            transition: "opacity 0.22s ease",
+            display: collapsed ? "none" : "flex",
+          }}
+        >
           <Box
             sx={{
               width: 36,
@@ -118,10 +144,15 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
             RequestHub
           </Typography>
         </Stack>
-        <IconButton size="small" onClick={onToggle} sx={{ bgcolor: "action.hover", borderRadius: 2 }}>
+        <IconButton
+          size="small"
+          onClick={onToggle}
+          sx={{ bgcolor: "action.hover", borderRadius: 2, width: 34, height: 34, flexShrink: 0 }}
+        >
           {collapsed ? <MenuIcon fontSize="small" /> : <ChevronLeft fontSize="small" />}
         </IconButton>
       </Box>
+
 
       <List sx={{ flex: 1, minHeight: 0, px: 1, overflowY: "auto" }}>
         {NAV_ITEMS.map((item) => (
@@ -134,10 +165,10 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
               mb: 0.5,
               px: collapsed ? 1 : 2,
               justifyContent: collapsed ? "center" : "flex-start",
-              color: item.label === "Dashboard" ? "primary.contrastText" : "text.secondary",
-              bgcolor: item.label === "Dashboard" ? "primary.main" : "transparent",
+              color: activePath === item.path ? "primary.contrastText" : "text.secondary",
+              bgcolor: activePath === item.path ? "primary.main" : "transparent",
               "&:hover": {
-                bgcolor: item.label === "Dashboard" ? "primary.main" : "action.hover",
+                bgcolor: activePath === item.path ? "primary.main" : "action.hover",
               },
             }}
           >
@@ -145,7 +176,7 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
               sx={{
                 minWidth: 0,
                 mr: collapsed ? 0 : 1.5,
-                color: item.label === "Dashboard" ? "primary.contrastText" : "text.secondary",
+                color: activePath === item.path ? "primary.contrastText" : "text.secondary",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -157,19 +188,51 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
         ))}
       </List>
 
+
       <Divider />
 
-      <Box sx={{ px: collapsed ? 1.5 : 2.5, py: 2, mt: "auto", display: "grid", rowGap: 1 }}>
-        <Button variant="text" color="inherit" startIcon={<Person fontSize="small" />} sx={{ justifyContent: collapsed ? "center" : "flex-start" }} onClick={() => onNavigate("/user/profile")}>
-          Profile
-        </Button>
-        <Button variant="text" color="inherit" startIcon={<Logout fontSize="small" />} sx={{ justifyContent: collapsed ? "center" : "flex-start" }} onClick={onLogout}>
-          Logout
-        </Button>
+
+      <Box sx={{ px: 2, py: 2, mt: "auto", display: "grid", rowGap: 1 }}>
+        {!collapsed ? (
+          <>
+            <Button
+              variant="text"
+              color="inherit"
+              startIcon={<Person fontSize="small" />}
+              sx={{ justifyContent: "flex-start" }}
+              onClick={() => onNavigate("/user/profile")}
+            >
+              Profile
+            </Button>
+            <Button
+              variant="text"
+              color="inherit"
+              startIcon={<Logout fontSize="small" />}
+              sx={{ justifyContent: "flex-start" }}
+              onClick={onLogout}
+            >
+              Logout
+            </Button>
+          </>
+        ) : (
+          <Stack direction="column" spacing={1} alignItems="center">
+            <Tooltip title="Profile" placement="right">
+              <IconButton size="small" onClick={() => onNavigate("/user/profile")} sx={{ bgcolor: "action.hover" }}>
+                <Person fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Logout" placement="right">
+              <IconButton size="small" onClick={onLogout} sx={{ bgcolor: "action.hover" }}>
+                <Logout fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )}
       </Box>
     </Paper>
   );
 }
+
 
 function Header({ onMenuClick }) {
   const theme = useTheme();
@@ -177,7 +240,9 @@ function Header({ onMenuClick }) {
   const { mode, toggleMode } = useThemeMode();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { unreadCount } = useUnreadNotificationsCount(user?.id);
   const [anchor, setAnchor] = useState(null);
+
 
   return (
     <Paper
@@ -218,6 +283,7 @@ function Header({ onMenuClick }) {
           </Paper>
         </Stack>
 
+
         <Stack direction="row" alignItems="center" spacing={1.25}>
           <Tooltip title="Theme">
             <IconButton onClick={toggleMode} sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
@@ -225,7 +291,18 @@ function Header({ onMenuClick }) {
             </IconButton>
           </Tooltip>
 
-          
+
+          <Tooltip title="Notifications">
+            <IconButton
+              sx={{ borderRadius: 2, bgcolor: "action.hover" }}
+              onClick={() => navigate("/user/notifications")}
+            >
+              <Badge color="error" badgeContent={unreadCount} invisible={unreadCount === 0}>
+                <NotificationsNone />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
 
           <Avatar
             sx={{
@@ -240,10 +317,18 @@ function Header({ onMenuClick }) {
             {(user?.email || "U").charAt(0).toUpperCase()}
           </Avatar>
           <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)} keepMounted>
-            <MenuItem>Profile</MenuItem>
-            <MenuItem>Settings</MenuItem>
             <MenuItem
               onClick={() => {
+                setAnchor(null);
+                navigate("/user/profile");
+              }}
+            >
+              Profile
+            </MenuItem>
+            <MenuItem onClick={() => setAnchor(null)}>Settings</MenuItem>
+            <MenuItem
+              onClick={() => {
+                setAnchor(null);
                 logout();
                 navigate("/login");
               }}
@@ -256,6 +341,7 @@ function Header({ onMenuClick }) {
     </Paper>
   );
 }
+
 
 function StatusChip({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
@@ -273,11 +359,13 @@ function StatusChip({ status }) {
   );
 }
 
+
 const formatLabel = (value) => {
   if (!value) return "";
   const text = value.toString().replace(/_/g, " ").toLowerCase();
   return text.replace(/\b\w/g, (c) => c.toUpperCase());
 };
+
 
 function StatCard({ label, value, color, icon, trend }) {
   return (
@@ -320,8 +408,10 @@ function StatCard({ label, value, color, icon, trend }) {
   );
 }
 
+
 function useRequestAnalytics(requests) {
   const now = useMemo(() => new Date(), []);
+
 
   const stats = useMemo(() => {
     const totals = { total: requests.length, Pending: 0, Approved: 0, Rejected: 0, Escalated: 0 };
@@ -330,6 +420,7 @@ function useRequestAnalytics(requests) {
     });
     return totals;
   }, [requests]);
+
 
   const slaRisks = useMemo(
     () =>
@@ -345,6 +436,7 @@ function useRequestAnalytics(requests) {
     [requests, now]
   );
 
+
   const timeline = useMemo(() => {
     const items = [];
     requests.forEach((r) =>
@@ -355,8 +447,10 @@ function useRequestAnalytics(requests) {
     return items.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 6);
   }, [requests]);
 
+
   return { stats, slaRisks, timeline };
 }
+
 
 export default function UserDashboard() {
   const theme = useTheme();
@@ -370,6 +464,7 @@ export default function UserDashboard() {
   const [sortBy, setSortBy] = useState("created_desc");
   const REQUEST_TYPES = ["IT", "LEAVE", "EXPENSE", "PURCHASE", "ACCESS"];
 
+
   useEffect(() => {
     API.get("/user/requests")
       .then((res) => setRequests(res.data || []))
@@ -378,10 +473,12 @@ export default function UserDashboard() {
       });
   }, []);
 
+
   const normalizedRequests = requests.map((req) => ({
     ...mapRequestDto(req),
     timeline: req.timeline || req.journey || [],
   }));
+
 
   const filteredRequests = normalizedRequests.filter((req) => {
     const matchesStatus = filters.status === "ALL" || req.status === filters.status;
@@ -394,6 +491,7 @@ export default function UserDashboard() {
     return matchesStatus && matchesUrgency && matchesType && matchesSearch;
   });
 
+
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     if (sortBy === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
     if (sortBy === "priority") return (b.urgency || "").localeCompare(a.urgency || "");
@@ -401,19 +499,24 @@ export default function UserDashboard() {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
+
   const { stats, slaRisks, timeline } = useRequestAnalytics(normalizedRequests);
   const chartBg = theme.palette.mode === "light" ? "#E5E7EB" : "rgba(255,255,255,0.06)";
+
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
+
   const sidebarWidth = isMobile ? 0 : (collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH);
+
 
   const handleNavigate = (path) => {
     navigate(path);
   };
+
 
   return (
     <Box sx={{ display: "flex", backgroundColor: "background.default", minHeight: "100vh", overflowX: "hidden" }}>
@@ -425,6 +528,7 @@ export default function UserDashboard() {
         onNavigate={handleNavigate}
         activePath={location.pathname}
       />
+
 
       <Box
         sx={{
@@ -439,6 +543,7 @@ export default function UserDashboard() {
         }}
       >
         <Header onMenuClick={() => setCollapsed((p) => !p)} />
+
 
         <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} mb={3}>
@@ -460,6 +565,7 @@ export default function UserDashboard() {
             </Stack>
           </Stack>
 
+
           {/* Stats */}
           <Grid container spacing={2} columns={{ xs: 12, sm: 12, md: 12, lg: 15 }} mb={3} alignItems="stretch">
             <Grid item xs={12} sm={6} md={4} lg={3}>
@@ -479,8 +585,10 @@ export default function UserDashboard() {
             </Grid>
           </Grid>
 
+
           {/* Quick actions */}
-          
+         
+
 
           <Grid container spacing={2} mb={2}>
             {/* Recent requests table */}
@@ -554,6 +662,7 @@ export default function UserDashboard() {
                     </select>
                   </Stack>
                 </Stack>
+
 
                 <Box sx={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", minWidth: 920, borderCollapse: "collapse" }}>
@@ -642,6 +751,7 @@ export default function UserDashboard() {
               </Paper>
             </Grid>
 
+
             {/* Timeline and SLA cards */}
             <Grid item xs={12} lg={4}>
               <Stack spacing={2} alignItems="stretch">
@@ -696,3 +806,4 @@ export default function UserDashboard() {
     </Box>
   );
 }
+

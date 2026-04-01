@@ -1,8 +1,9 @@
 // src/components/landing/Navbar.jsx
 import { useEffect, useState } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom"; // <-- import navigate
+import { useNavigate } from "react-router-dom";
 import { NAV_LINKS } from "../../constant/landingData";
+
 
 function Logo() {
   return (
@@ -39,9 +40,11 @@ function Logo() {
   );
 }
 
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const navigate = useNavigate(); // <-- hook
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40);
@@ -49,9 +52,18 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  const scrollTo = (id) =>
-    document.getElementById(id.replace(/\s+/g, "").toLowerCase())
-      ?.scrollIntoView({ behavior: "smooth" });
+
+  const scrollTo = (id) => {
+    const targetId = id.replace(/\s+/g, "").toLowerCase();
+    const element = document.getElementById(targetId);
+    if (!element) return;
+
+
+    const navOffset = 84;
+    const top = element.getBoundingClientRect().top + window.scrollY - navOffset;
+    window.scrollTo({ top, behavior: "smooth" });
+  };
+
 
   return (
     <Box
@@ -75,6 +87,7 @@ export default function Navbar() {
     >
       <Logo />
 
+
       <Stack direction="row" spacing={3.5} sx={{ display: { xs: "none", md: "flex" } }}>
         {NAV_LINKS.map((link) => (
           <Typography
@@ -93,8 +106,9 @@ export default function Navbar() {
           </Typography>
         ))}
 
-       
+
       </Stack>
+
 
       <Button
         variant="outlined"
@@ -111,22 +125,23 @@ export default function Navbar() {
       >
         Try Demo
       </Button>
-       {/* LOGIN BUTTON */}
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => navigate("/login")}
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: "0.8rem",
-            ml: 2,
-            background: "linear-gradient(90deg, #00E5FF, #7C3AED)",
-            "&:hover": { opacity: 0.85 },
-          }}
-        >
-          Login
-        </Button>
+      <Button
+        variant="contained"
+        size="small"
+        onClick={() => navigate("/login")}
+        sx={{
+          textTransform: "none",
+          fontWeight: 600,
+          fontSize: "0.8rem",
+          ml: 2,
+          background: "linear-gradient(90deg, #00E5FF, #7C3AED)",
+          "&:hover": { opacity: 0.85 },
+        }}
+      >
+        Login
+      </Button>
     </Box>
   );
 }
+
+

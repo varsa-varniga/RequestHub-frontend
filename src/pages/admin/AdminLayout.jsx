@@ -43,6 +43,8 @@ import {
 import { useThemeMode } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { AdminDataProvider } from "../../context/AdminDataContext";
+import { useUnreadNotificationsCount } from "../../hooks/useNotifications";
+
 
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/admin/dashboard", icon: <Dashboard fontSize="small" /> },
@@ -54,9 +56,11 @@ const NAV_ITEMS = [
  
 ];
 
+
 function Sidebar({ collapsed, onToggle, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
+
 
   return (
     <Paper
@@ -76,8 +80,26 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
         overflow: "hidden",
       }}
     >
-      <Box sx={{ px: collapsed ? 2 : 3, pt: 3, pb: 2, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between" }}>
-        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ opacity: collapsed ? 0 : 1, transition: "opacity 0.22s ease" }}>
+      <Box
+        sx={{
+          px: 2,
+          pt: 3,
+          pb: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "space-between",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.25}
+          sx={{
+            opacity: collapsed ? 0 : 1,
+            transition: "opacity 0.22s ease",
+            display: collapsed ? "none" : "flex",
+          }}
+        >
           <Box
             sx={{
               width: 36,
@@ -94,12 +116,17 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
             RequestHub
           </Typography>
         </Stack>
-        <IconButton size="small" onClick={onToggle} sx={{ bgcolor: "action.hover", borderRadius: 2 }}>
+        <IconButton
+          size="small"
+          onClick={onToggle}
+          sx={{ bgcolor: "action.hover", borderRadius: 2, width: 34, height: 34, flexShrink: 0 }}
+        >
           {collapsed ? <MenuIcon fontSize="small" /> : <ChevronLeft fontSize="small" />}
         </IconButton>
       </Box>
 
-      <List sx={{ flex: 1, px: 1, overflowY: "auto" }}>
+
+      <List sx={{ flex: 1, minHeight: 0, px: 1, overflowY: "auto" }}>
         {NAV_ITEMS.map((item) => (
           <ListItemButton
             key={item.label}
@@ -133,26 +160,53 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
         ))}
       </List>
 
+
       <Divider />
 
-      <Box sx={{ px: collapsed ? 1.5 : 2.5, py: 2, display: "grid", rowGap: 1 }}>
-        <Button
-          variant="text"
-          color="inherit"
-          startIcon={<PersonIcon fontSize="small" />}
-          sx={{ justifyContent: collapsed ? "center" : "flex-start" }}
-          onClick={() => navigate("/admin/profile")}
-        >
-          Profile
-        </Button>
-        
-        <Button variant="text" color="inherit" startIcon={<Logout fontSize="small" />} sx={{ justifyContent: collapsed ? "center" : "flex-start" }} onClick={onLogout}>
-          Logout
-        </Button>
+
+      <Box sx={{ px: 2, py: 2, mt: "auto", display: "grid", rowGap: 1 }}>
+        {!collapsed ? (
+          <>
+            <Button
+              variant="text"
+              color="inherit"
+              startIcon={<PersonIcon fontSize="small" />}
+              sx={{ justifyContent: "flex-start" }}
+              onClick={() => navigate("/admin/profile")}
+            >
+              Profile
+            </Button>
+
+
+            <Button
+              variant="text"
+              color="inherit"
+              startIcon={<Logout fontSize="small" />}
+              sx={{ justifyContent: "flex-start" }}
+              onClick={onLogout}
+            >
+              Logout
+            </Button>
+          </>
+        ) : (
+          <Stack direction="column" spacing={1} alignItems="center">
+            <Tooltip title="Profile" placement="right">
+              <IconButton size="small" onClick={() => navigate("/admin/profile")} sx={{ bgcolor: "action.hover" }}>
+                <PersonIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Logout" placement="right">
+              <IconButton size="small" onClick={onLogout} sx={{ bgcolor: "action.hover" }}>
+                <Logout fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )}
       </Box>
     </Paper>
   );
 }
+
 
 function Header({ onMenuClick }) {
   const theme = useTheme();
@@ -160,7 +214,9 @@ function Header({ onMenuClick }) {
   const { mode, toggleMode } = useThemeMode();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { unreadCount } = useUnreadNotificationsCount(user?.id);
   const [anchor, setAnchor] = useState(null);
+
 
   return (
     <Paper
@@ -201,6 +257,7 @@ function Header({ onMenuClick }) {
           </Paper>
         </Stack>
 
+
         <Stack direction="row" alignItems="center" spacing={1.25}>
           <Tooltip title="Theme">
             <IconButton onClick={toggleMode} sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
@@ -208,13 +265,18 @@ function Header({ onMenuClick }) {
             </IconButton>
           </Tooltip>
 
+
           <Tooltip title="Notifications">
-            <IconButton sx={{ borderRadius: 2, bgcolor: "action.hover" }}>
-              <Badge color="warning" variant="dot">
+            <IconButton
+              sx={{ borderRadius: 2, bgcolor: "action.hover" }}
+              onClick={() => navigate("/admin/notifications")}
+            >
+              <Badge color="error" badgeContent={unreadCount} invisible={unreadCount === 0}>
                 <NotificationsNone />
               </Badge>
             </IconButton>
           </Tooltip>
+
 
           <Avatar
             sx={{
@@ -229,10 +291,18 @@ function Header({ onMenuClick }) {
             {(user?.email || "A").charAt(0).toUpperCase()}
           </Avatar>
           <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)} keepMounted>
-            <MenuItem>Profile</MenuItem>
-            <MenuItem>Settings</MenuItem>
             <MenuItem
               onClick={() => {
+                setAnchor(null);
+                navigate("/admin/profile");
+              }}
+            >
+              Profile
+            </MenuItem>
+            <MenuItem onClick={() => setAnchor(null)}>Settings</MenuItem>
+            <MenuItem
+              onClick={() => {
+                setAnchor(null);
                 logout();
                 navigate("/login");
               }}
@@ -246,11 +316,13 @@ function Header({ onMenuClick }) {
   );
 }
 
+
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const { logout } = useAuth();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
 
   return (
     <AdminDataProvider>

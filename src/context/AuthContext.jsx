@@ -8,11 +8,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null); // { id, name, email, role, active }
   const [loading, setLoading] = useState(true);
 
+  const normalizeRole = (data) => {
+    const raw =
+      data?.role ||
+      (Array.isArray(data?.roles) ? data.roles[0] : null) ||
+      (Array.isArray(data?.authorities) ? data.authorities[0] : null) ||
+      data?.authority ||
+      "USER";
+    return raw.toString().toUpperCase().replace(/^ROLE_/, "");
+  };
+
   const normalizeUser = (data) => ({
     id: data?.id,
-    name: data?.name || data?.fullName || "",
+    name: data?.name || data?.fullName || data?.displayName || "",
     email: data?.email || data?.username || "",
-    role: data?.role || "USER",
+    role: normalizeRole(data),
     active: data?.active ?? true,
   });
 

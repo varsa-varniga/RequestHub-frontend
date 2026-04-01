@@ -88,6 +88,16 @@ export default function Register() {
               display="block"
               textAlign="center"
               sx={{ cursor: "pointer", "&:hover": { color: "primary.main" } }}
+              onClick={() => navigate("/forgot-password")}
+            >
+              Forgot password?
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              textAlign="center"
+              sx={{ cursor: "pointer", "&:hover": { color: "primary.main" } }}
               onClick={() => navigate("/login")}
             >
               Already have an account? Sign in
