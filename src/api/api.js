@@ -7,7 +7,14 @@ const API = axios.create({
 
 // Set credentials globally (optional)
 export const setAuth = (username, password) => {
-  API.defaults.headers.common["Authorization"] = `Basic ${btoa(`${username}:${password}`)}`;
+  const token = btoa(`${username}:${password}`);
+  API.defaults.headers.common["Authorization"] = `Basic ${token}`;
+  return token;
+};
+
+export const setAuthToken = (token) => {
+  if (!token) return;
+  API.defaults.headers.common["Authorization"] = `Basic ${token}`;
 };
 
 // Clear credentials

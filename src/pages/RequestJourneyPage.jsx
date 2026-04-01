@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import API from "../api/api";
+import { mapRequestDto } from "../utils/requestUtils";
 
 const STATUS_STYLES = {
   APPROVED: { bg: "rgba(34,197,94,0.12)", color: "#22C55E" },
@@ -42,12 +43,14 @@ export default function RequestJourneyPage() {
 
         if (!found) throw new Error("Request not found");
 
-        requestData = found;
+        requestData = mapRequestDto(found);
 
-        return API.get(`/workflow/${id}`);
+        return API.get(`/workflows`);
       })
       .then((stageRes) => {
-        stagesData = stageRes.data || [];
+        const workflows = stageRes.data || [];
+        const match = workflows.find((w) => w.requestType === requestData.type);
+        stagesData = match?.stages || [];
       })
       .catch((err) => {
         console.error("API ERROR:", err);
@@ -97,10 +100,12 @@ export default function RequestJourneyPage() {
         const timeline = sortedStages.map((stage) => {
           let status = "PENDING";
 
-          if (stage.stageOrder < currentStage) {
+          if ((requestData.rawStatus || "").toString().toUpperCase().includes("APPROV")) {
+            status = "APPROVED";
+          } else if (stage.stageOrder < currentStage) {
             status = "APPROVED";
           } else if (stage.stageOrder === currentStage) {
-            status = requestData.status;
+            status = requestData.rawStatus || "PENDING";
           }
 
           return {
@@ -122,7 +127,7 @@ export default function RequestJourneyPage() {
         setRequest({
           id: requestData.id,
           title: requestData.title,
-          type: requestData.requestType,
+          type: requestData.type,
           priority: requestData.urgency,
           timeline,
         });

@@ -1,114 +1,167 @@
-// src/pages/landing/Demo.jsx
-import { useState } from "react";
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
-import { ArrowForwardOutlined, CheckCircleOutline } from "@mui/icons-material";
-import FadeIn from "../../wrapper/FadeIn"; 
+import { useNavigate } from "react-router-dom";
+import FadeIn from "../../wrapper/FadeIn";
+
 
 export default function Demo() {
-  const [hovered, setHovered] = useState(false);
+  const navigate = useNavigate();
+
 
   return (
     <Box
       id="demo"
       sx={{
-        py: { xs: 10, md: 14 },
-        position: "relative", overflow: "hidden",
-        background: "linear-gradient(135deg, #0A0D18 0%, #0E0B1A 100%)",
+        pt: { xs: 12, md: 18 },
+        pb: { xs: 12, md: 16 },
+        position: "relative",
+        overflow: "hidden",
+        background:
+          "radial-gradient(circle at 50% 78%, rgba(34, 118, 255, 0.08), transparent 20%), linear-gradient(180deg, #081221 0%, #06111d 100%)",
       }}
     >
-      {/* Gradient orbs */}
-      <Box sx={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background:
-          "radial-gradient(ellipse 70% 50% at 30% 50%, rgba(0,229,255,0.07) 0%, transparent 60%), " +
-          "radial-gradient(ellipse 60% 50% at 70% 50%, rgba(124,58,237,0.10) 0%, transparent 60%)",
-      }} />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            "linear-gradient(rgba(27, 75, 156, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(27, 75, 156, 0.2) 1px, transparent 1px)",
+          backgroundSize: { xs: "38px 38px", md: "75px 75px" },
+          opacity: 0.55,
+        }}
+      />
 
-      {/* Grid */}
-      <Box sx={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage:
-          "linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), " +
-          "linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px)",
-        backgroundSize: "50px 50px",
-      }} />
 
-      <Container maxWidth="sm" sx={{ position: "relative", zIndex: 2, textAlign: "center" }}>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background:
+            "linear-gradient(180deg, rgba(6,17,29,0.04) 0%, rgba(6,17,29,0.18) 52%, rgba(6,17,29,0.08) 100%)",
+        }}
+      />
+
+
+      <Container maxWidth={false} sx={{ position: "relative", zIndex: 1, maxWidth: "1280px" }}>
         <FadeIn>
-          {/* Badge */}
-          <Box sx={{
-            display: "inline-block", px: 2, py: 0.6, mb: 3, borderRadius: "100px",
-            background: "linear-gradient(135deg, rgba(0,229,255,0.1), rgba(124,58,237,0.1))",
-            border: "1px solid rgba(0,229,255,0.2)",
-          }}>
-            <Typography variant="caption" sx={{
-              color: "#00E5FF", fontWeight: 600,
-              letterSpacing: "0.08em", textTransform: "uppercase",
-            }}>
-              Ready to get started?
-            </Typography>
-          </Box>
-
-          <Typography
-            variant="h2"
-            sx={{ fontSize: { xs: "2rem", md: "3rem" }, letterSpacing: "-0.03em", mb: 2 }}
-          >
-            See ReqZen{" "}
-            <Box component="span" sx={{
-              background: "linear-gradient(135deg, #00E5FF, #7C3AED)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            }}>
-              in action
-            </Box>
-          </Typography>
-
-          <Typography variant="body1" color="text.secondary" mb={5} lineHeight={1.75}>
-            Explore the full workflow — from submission to approval — with our live demo environment.
-          </Typography>
-
-          {/* CTA button */}
-          <Box
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            sx={{ display: "inline-block" }}
-          >
-            <Button
-              variant="contained"
-              size="large"
-              endIcon={
-                <ArrowForwardOutlined sx={{
-                  transition: "transform 0.2s",
-                  transform: hovered ? "translateX(4px)" : "none",
-                }} />
-              }
+          <Stack alignItems="center" textAlign="center" spacing={0}>
+            <Typography
+              variant="overline"
               sx={{
-                background: hovered
-                  ? "linear-gradient(135deg, #00E5FF, #7C3AED)"
-                  : "linear-gradient(135deg, #0891B2, #6D28D9)",
-                color: "#EEF2FF", fontWeight: 700, fontSize: "1rem",
-                textTransform: "none", px: 5, py: 1.8,
-                boxShadow: hovered
-                  ? "0 0 60px rgba(0,229,255,0.35)"
-                  : "0 0 30px rgba(0,229,255,0.15)",
-                transform: hovered ? "scale(1.03) translateY(-2px)" : "none",
-                transition: "all 0.25s ease",
+                fontFamily: "'Sora', sans-serif",
+                color: "#5b9cff",
+                letterSpacing: "0.12em",
+                fontWeight: 800,
+                fontSize: { xs: "0.76rem", md: "0.86rem" },
+                lineHeight: 1,
+                mb: { xs: 2.5, md: 3.5 },
               }}
             >
-              Try Demo
-            </Button>
-          </Box>
+              GET STARTED TODAY
+            </Typography>
 
-          {/* Trust pills */}
-          <Stack direction="row" justifyContent="center" spacing={4} mt={5}>
-            {["Free sandbox", "No setup needed", "Full feature access"].map(t => (
-              <Stack key={t} direction="row" spacing={0.7} alignItems="center">
-                <CheckCircleOutline sx={{ fontSize: 14, color: "#00E5FF" }} />
-                <Typography variant="caption" color="text.secondary" fontWeight={500}>{t}</Typography>
-              </Stack>
-            ))}
+
+            <Typography
+              variant="h2"
+              sx={{
+                fontFamily: "'Syne', sans-serif",
+                fontWeight: 700,
+                fontSize: "clamp(28px, 4vw, 42px)",
+                textAlign: "center",
+                letterSpacing: "-1px",
+                lineHeight: 1.08,
+                maxWidth: 860,
+                color: "#f1f6ff",
+                mb: "12px",
+              }}
+            >
+              Ready to streamline
+              <br />
+              your requests?
+            </Typography>
+
+
+            <Typography
+              variant="body1"
+              sx={{
+                fontFamily: "'Sora', sans-serif",
+                maxWidth: 760,
+                color: "rgba(160, 187, 232, 0.82)",
+                fontSize: { xs: "0.96rem", md: "1.02rem" },
+                lineHeight: 1.78,
+                fontWeight: 400,
+                mb: { xs: 5, md: 7.5 },
+              }}
+            >
+              Join hundreds of teams already using RequestFlow to resolve faster
+              and work smarter.
+            </Typography>
+
+
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={{ xs: 2, sm: 2.3 }}
+              justifyContent="center"
+              sx={{ width: "100%", maxWidth: 540 }}
+            >
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => navigate("/register")}
+                sx={{
+                  fontFamily: "'Sora', sans-serif",
+                  minWidth: { xs: "100%", sm: 264 },
+                  height: 62,
+                  px: 4,
+                  borderRadius: "14px",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  fontSize: { xs: "0.98rem", md: "1rem" },
+                  color: "#f7fbff",
+                  background: "linear-gradient(90deg, #2d73f5 0%, #1bbcea 100%)",
+                  boxShadow: "0 16px 38px rgba(31, 135, 255, 0.26)",
+                  "&:hover": {
+                    background: "linear-gradient(90deg, #3a83ff 0%, #25c7ef 100%)",
+                    boxShadow: "0 20px 44px rgba(31, 135, 255, 0.3)",
+                  },
+                }}
+              >
+                Create Free Account
+              </Button>
+
+
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => navigate("/login")}
+                sx={{
+                  fontFamily: "'Sora', sans-serif",
+                  minWidth: { xs: "100%", sm: 236 },
+                  height: 62,
+                  px: 4,
+                  borderRadius: "14px",
+                  textTransform: "none",
+                  fontWeight: 500,
+                  fontSize: { xs: "0.98rem", md: "1rem" },
+                  color: "#e6eefc",
+                  borderColor: "rgba(24, 80, 176, 0.5)",
+                  backgroundColor: "rgba(6, 17, 29, 0.18)",
+                  backdropFilter: "blur(8px)",
+                  "&:hover": {
+                    borderColor: "rgba(72, 135, 247, 0.72)",
+                    backgroundColor: "rgba(9, 23, 40, 0.48)",
+                  },
+                }}
+              >
+                Schedule a Demo
+              </Button>
+            </Stack>
           </Stack>
         </FadeIn>
       </Container>
     </Box>
   );
 }
+
+

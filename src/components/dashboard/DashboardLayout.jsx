@@ -35,15 +35,17 @@ import {
   Search as SearchIcon,
   AddCircleOutline as AddCircleOutlineIcon,
   ListAlt as ListAltIcon,
+  CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../context/AuthContext";
 import { useThemeMode } from "../../context/ThemeContext";
+import { useUnreadNotificationsCount } from "../../hooks/useNotifications";
 
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/user/dashboard", icon: <DashboardIcon fontSize="small" /> },
   { label: "Submit Request", path: "/user/create", icon: <AddCircleOutlineIcon fontSize="small" /> },
   { label: "My Requests", path: "/user/requests", icon: <ListAltIcon fontSize="small" /> },
-  { label: "Notifications", path: "/user/notifications", icon: <NotificationsIcon fontSize="small" /> },
+  { label: "My Approvals", path: "/user/approvals", icon: <CheckCircleIcon fontSize="small" /> },
   { label: "Profile", path: "/user/profile", icon: <PersonIcon fontSize="small" /> },
   { label: "Help / Support", path: "/help", icon: <HelpIcon fontSize="small" /> },
 ];
@@ -220,6 +222,8 @@ function Topbar({ onOpenSidebar, showSearch, showMenu }) {
   const isSmall = useMediaQuery(theme.breakpoints.down("md"));
   const { mode, toggleMode } = useThemeMode();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { unreadCount } = useUnreadNotificationsCount(user?.id);
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleOpenMenu = (event) => setAnchorEl(event.currentTarget);
@@ -292,8 +296,13 @@ function Topbar({ onOpenSidebar, showSearch, showMenu }) {
             {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
 
-          <IconButton size="small" sx={{ bgcolor: "action.hover" }} aria-label="Notifications">
-            <Badge badgeContent={3} color="error" variant="dot">
+          <IconButton
+            size="small"
+            sx={{ bgcolor: "action.hover" }}
+            aria-label="Notifications"
+            onClick={() => navigate("/user/notifications")}
+          >
+            <Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0}>
               <NotificationsIcon />
             </Badge>
           </IconButton>

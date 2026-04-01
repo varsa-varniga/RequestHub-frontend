@@ -20,6 +20,7 @@ import { Visibility, VisibilityOff, LockOutlined, PersonAdd } from "@mui/icons-m
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -44,13 +45,13 @@ export default function Login() {
           headers: { Authorization: `Basic ${token}` },
         });
 
-        console.log("Login response:", res.data);
-
-        // Extract role
-        const role = res.data.role || "USER";
+        const role = (res.data.role || (Array.isArray(res.data.roles) ? res.data.roles[0] : null) || (Array.isArray(res.data.authorities) ? res.data.authorities[0] : null) || res.data.authority || "USER")
+          .toString()
+          .toUpperCase()
+          .replace(/^ROLE_/, "");
 
         // Store user info in context
-        login(email, password, role);
+        login(token, res.data);
 
         // Navigate based on role
         if (role === "ADMIN") navigate("/admin/dashboard");
@@ -63,7 +64,7 @@ export default function Login() {
           return;
         }
 
-        const payload = { email, password, role: "USER" };
+        const payload = { name: name || email.split("@")[0], email, password, role: "USER" };
         await API.post("/users", payload);
 
         setIsLogin(true);
@@ -171,16 +172,40 @@ export default function Login() {
                 }}
               />
 
+              {isLogin && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  textAlign="right"
+                  sx={{ cursor: "pointer", "&:hover": { color: "primary.main" } }}
+                  onClick={() => navigate("/forgot-password")}
+                >
+                  Forgot password?
+                </Typography>
+              )}
+
               {!isLogin && (
-                <TextField
-                  label="Confirm Password"
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  fullWidth
-                  sx={{ "& .MuiInputBase-root": { height: 56 } }}
-                />
+                <>
+                  <TextField
+                    label="Full Name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    fullWidth
+                    sx={{ "& .MuiInputBase-root": { height: 56 } }}
+                  />
+                  <TextField
+                    label="Confirm Password"
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    fullWidth
+                    sx={{ "& .MuiInputBase-root": { height: 56 } }}
+                  />
+                </>
               )}
 
               <Button

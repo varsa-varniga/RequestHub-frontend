@@ -2,6 +2,7 @@
 import { Box, Container, Divider, Grid, Stack, Typography } from "@mui/material";
 import { GitHub } from "@mui/icons-material";
 
+
 function FooterLogo() {
   return (
     <Stack direction="row" alignItems="center" spacing={1.5} mb={1.5}>
@@ -23,8 +24,10 @@ function FooterLogo() {
   );
 }
 
+
 const PRODUCT_LINKS  = ["Features", "How It Works", "Demo", "Pricing"];
 const COMPANY_LINKS  = ["About", "Contact", "Privacy Policy", "Terms"];
+
 
 export default function Footer() {
   return (
@@ -39,6 +42,7 @@ export default function Footer() {
       <Container maxWidth="lg">
         <Grid container spacing={4} alignItems="flex-start">
 
+
           {/* Brand */}
           <Grid item xs={12} md={4}>
             <FooterLogo />
@@ -47,6 +51,7 @@ export default function Footer() {
               Streamline. Approve. Audit.
             </Typography>
           </Grid>
+
 
           {/* Product links */}
           <Grid item xs={6} md={2}>
@@ -67,6 +72,7 @@ export default function Footer() {
             ))}
           </Grid>
 
+
           {/* Company links */}
           <Grid item xs={6} md={2}>
             <Typography
@@ -86,6 +92,7 @@ export default function Footer() {
             ))}
           </Grid>
 
+
           {/* Built with */}
           <Grid item xs={12} md={4}>
             <Box sx={{
@@ -103,7 +110,9 @@ export default function Footer() {
           </Grid>
         </Grid>
 
+
         <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 4 }} />
+
 
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems="center" spacing={2}>
           <Typography variant="caption" color="text.secondary">
