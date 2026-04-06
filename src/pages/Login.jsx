@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import API from "../api/api";
@@ -27,8 +27,21 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { user, login, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    const role = (user.role || "USER")
+      .toString()
+      .toUpperCase()
+      .replace(/^ROLE_/, "");
+
+    navigate(role === "ADMIN" ? "/admin/dashboard" : "/user/dashboard", {
+      replace: true,
+    });
+  }, [authLoading, navigate, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,25 +50,20 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        // Encode credentials for Basic Auth
-        const token = btoa(`${email}:${password}`);
+        const res = await API.post("/auth/login", { email, password });
 
-        // Step 1: Call /auth/me to get authenticated user info including role
-        const res = await API.get("/auth/me", {
-          headers: { Authorization: `Basic ${token}` },
-        });
-
-        const role = (res.data.role || (Array.isArray(res.data.roles) ? res.data.roles[0] : null) || (Array.isArray(res.data.authorities) ? res.data.authorities[0] : null) || res.data.authority || "USER")
+        const role = (res.data.role || "USER")
           .toString()
           .toUpperCase()
           .replace(/^ROLE_/, "");
 
-        // Store user info in context
-        login(token, res.data);
+        login(res.data);
 
-        // Navigate based on role
-        if (role === "ADMIN") navigate("/admin/dashboard");
-        else navigate("/user/dashboard");
+        if (role === "ADMIN") {
+          navigate("/admin/dashboard", { replace: true });
+        } else {
+          navigate("/user/dashboard", { replace: true });
+        }
       } else {
         // Registration
         if (password !== confirmPassword) {

@@ -5,7 +5,7 @@ import { Box, Button, Chip, InputBase, LinearProgress, Paper, Stack, Typography,
 import API from "../../api/api";
 import { useAuth } from "../../context/AuthContext";
 import { useAdminData } from "../../context/AdminDataContext";
-import { computeSlaRemainingHours } from "../../utils/requestUtils";
+import { computeRequestSlaRemainingHours } from "../../utils/requestUtils";
 import { formatRelativeHours, StatusChip } from "./adminShared.jsx";
 
 export default function AllRequests() {
@@ -139,7 +139,7 @@ export default function AllRequests() {
             </thead>
             <tbody>
               {filteredRequests.map((req) => {
-                const slaRemainingHours = computeSlaRemainingHours(req.slaDeadline);
+                const slaRemainingHours = computeRequestSlaRemainingHours(req.slaDeadline, req.status);
                 return (
                   <tr
                     key={req.id}
@@ -183,11 +183,28 @@ export default function AllRequests() {
                             borderRadius: 999,
                             backgroundColor: theme.palette.mode === "light" ? "#E5E7EB" : "rgba(255,255,255,0.06)",
                             "& .MuiLinearProgress-bar": {
-                              background: slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "#22C55E",
+                              background: typeof slaRemainingHours === "number"
+                                ? slaRemainingHours < 8
+                                  ? "#EF4444"
+                                  : slaRemainingHours < 24
+                                  ? "#F59E0B"
+                                  : "#22C55E"
+                                : theme.palette.action.disabledBackground,
                             },
                           }}
                         />
-                        <Typography variant="caption" color={slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "text.secondary"}>
+                        <Typography
+                          variant="caption"
+                          color={
+                            typeof slaRemainingHours === "number"
+                              ? slaRemainingHours < 8
+                                ? "#EF4444"
+                                : slaRemainingHours < 24
+                                ? "#F59E0B"
+                                : "text.secondary"
+                              : "text.secondary"
+                          }
+                        >
                           {slaRemainingHours == null ? "—" : formatRelativeHours(slaRemainingHours)}
                         </Typography>
                       </Stack>

@@ -111,6 +111,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/admin/profile"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <AdminProfile />
+          </ProtectedRoute>
+        }
+      />
 
       {/* ── Admin (protected) ─────────────────────── */}
       <Route
@@ -130,7 +138,6 @@ function App() {
         <Route path="users" element={<AdminUserManagement />} />
         <Route path="reports" element={<AdminReportsAnalytics />} />
         <Route path="audit-logs" element={<AdminAuditLogs />} />
-        <Route path="profile" element={<AdminProfile />} />
         <Route path="notifications" element={<AdminNotifications />} />
       </Route>
 

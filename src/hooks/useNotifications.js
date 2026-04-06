@@ -13,7 +13,15 @@ export function useUnreadNotificationsCount(userId, pollMs = 20000) {
     setError(null);
     try {
       const res = await API.get(`/notifications/${userId}/unread-count`);
-      const count = typeof res.data === "number" ? res.data : Number(res.data?.count || 0);
+      const count = typeof res.data === "number"
+        ? res.data
+        : Number(
+            res.data?.count ??
+            res.data?.unreadCount ??
+            res.data?.data?.count ??
+            res.data?.data?.unreadCount ??
+            0
+          );
       setUnreadCount(Number.isNaN(count) ? 0 : count);
     } catch (err) {
       setError(err);

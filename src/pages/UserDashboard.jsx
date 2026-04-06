@@ -48,7 +48,7 @@ import {
   Logout,
   CheckCircle,
 } from "@mui/icons-material";
-import { computeSlaRemainingHours, mapRequestDto } from "../utils/requestUtils";
+import { computeRequestSlaRemainingHours, computeSlaRemainingHours, mapRequestDto } from "../utils/requestUtils";
 import { useUnreadNotificationsCount } from "../hooks/useNotifications";
 
 
@@ -88,6 +88,14 @@ function formatRelativeHours(hours) {
 
 
 function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePath }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const idleColor = isDark ? "#E6EEF9" : "#334155";
+  const activeColor = isDark ? "#F8FBFF" : "#0f172a";
+  const activeIconColor = isDark ? "#22D3EE" : "#0f172a";
+  const activeBg = isDark ? "#123447" : "#dbeafe";
+  const hoverBg = isDark ? "rgba(255,255,255,0.08)" : "action.hover";
+
   return (
     <Paper
       elevation={0}
@@ -165,10 +173,15 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
               mb: 0.5,
               px: collapsed ? 1 : 2,
               justifyContent: collapsed ? "center" : "flex-start",
-              color: activePath === item.path ? "primary.contrastText" : "text.secondary",
-              bgcolor: activePath === item.path ? "primary.main" : "transparent",
+              color: activePath === item.path ? activeColor : idleColor,
+              bgcolor: activePath === item.path ? activeBg : "transparent",
+              border: activePath === item.path
+                ? (isDark ? "1px solid rgba(103, 232, 249, 0.32)" : "1px solid #bfdbfe")
+                : "1px solid transparent",
+              fontWeight: activePath === item.path ? 700 : 600,
+              boxShadow: activePath === item.path && isDark ? "0 10px 24px rgba(0, 0, 0, 0.28)" : "none",
               "&:hover": {
-                bgcolor: activePath === item.path ? "primary.main" : "action.hover",
+                bgcolor: activePath === item.path ? activeBg : hoverBg,
               },
             }}
           >
@@ -176,14 +189,14 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
               sx={{
                 minWidth: 0,
                 mr: collapsed ? 0 : 1.5,
-                color: activePath === item.path ? "primary.contrastText" : "text.secondary",
+                color: activePath === item.path ? activeIconColor : idleColor,
                 display: "grid",
                 placeItems: "center",
               }}
             >
               {item.icon}
             </ListItemIcon>
-            {!collapsed && <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 700 }} />}
+            {!collapsed && <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: activePath === item.path ? 700 : 600 }} />}
           </ListItemButton>
         ))}
       </List>
@@ -199,7 +212,7 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
               variant="text"
               color="inherit"
               startIcon={<Person fontSize="small" />}
-              sx={{ justifyContent: "flex-start" }}
+              sx={{ justifyContent: "flex-start", fontWeight: 700 }}
               onClick={() => onNavigate("/user/profile")}
             >
               Profile
@@ -208,7 +221,7 @@ function Sidebar({ collapsed, isMobile, onToggle, onLogout, onNavigate, activePa
               variant="text"
               color="inherit"
               startIcon={<Logout fontSize="small" />}
-              sx={{ justifyContent: "flex-start" }}
+              sx={{ justifyContent: "flex-start", fontWeight: 700 }}
               onClick={onLogout}
             >
               Logout
@@ -426,12 +439,14 @@ function useRequestAnalytics(requests) {
     () =>
       requests
         .map((r) => {
-          const remaining = r.slaDeadline
-            ? computeSlaRemainingHours(r.slaDeadline)
-            : Math.max(0, (new Date(r.createdAt).getTime() + r.slaHours * 3600 * 1000 - now.getTime()) / 36e5);
-          return { ...r, remaining: remaining == null ? 0 : remaining };
+          const remaining = r.status === "Pending"
+            ? r.slaDeadline
+              ? computeSlaRemainingHours(r.slaDeadline)
+              : Math.max(0, (new Date(r.createdAt).getTime() + r.slaHours * 3600 * 1000 - now.getTime()) / 36e5)
+            : null;
+          return { ...r, remaining };
         })
-        .filter((r) => r.status === "Pending" || r.remaining < 24)
+        .filter((r) => r.status === "Pending" || (r.remaining != null && r.remaining < 24))
         .sort((a, b) => a.remaining - b.remaining),
     [requests, now]
   );
@@ -495,7 +510,11 @@ export default function UserDashboard() {
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     if (sortBy === "created_asc") return new Date(a.createdAt) - new Date(b.createdAt);
     if (sortBy === "priority") return (b.urgency || "").localeCompare(a.urgency || "");
-    if (sortBy === "sla") return (computeSlaRemainingHours(a.slaDeadline) || 0) - (computeSlaRemainingHours(b.slaDeadline) || 0);
+    if (sortBy === "sla") {
+      const aSla = computeRequestSlaRemainingHours(a.slaDeadline, a.status);
+      const bSla = computeRequestSlaRemainingHours(b.slaDeadline, b.status);
+      return (aSla ?? Infinity) - (bSla ?? Infinity);
+    }
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
@@ -511,6 +530,13 @@ export default function UserDashboard() {
 
 
   const sidebarWidth = isMobile ? 0 : (collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH);
+  const tableHeaderColor = theme.palette.mode === "light" ? "#475569" : "#D7E2F1";
+  const tableMutedColor = theme.palette.mode === "light" ? theme.palette.text.secondary : "#B9C7DB";
+  const highPriorityBg = theme.palette.mode === "light" ? "rgba(239,68,68,0.12)" : "rgba(248,113,113,0.18)";
+  const highPriorityColor = theme.palette.mode === "light" ? "#DC2626" : "#FECACA";
+  const mediumPriorityBg = theme.palette.mode === "light" ? "rgba(99,102,241,0.12)" : "rgba(129,140,248,0.18)";
+  const mediumPriorityColor = theme.palette.mode === "light" ? "#4338CA" : "#C7D2FE";
+  const riskChipBg = theme.palette.mode === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.08)";
 
 
   const handleNavigate = (path) => {
@@ -675,8 +701,9 @@ export default function UserDashboard() {
                               textAlign: "left",
                               padding: "10px 8px",
                               fontSize: "0.8rem",
-                              color: theme.palette.text.secondary,
+                              color: tableHeaderColor,
                               borderBottom: `1px solid ${theme.palette.divider}`,
+                              fontWeight: 700,
                             }}
                           >
                             {col}
@@ -686,7 +713,7 @@ export default function UserDashboard() {
                     </thead>
                     <tbody>
                     {sortedRequests.map((req) => {
-                      const slaRemainingHours = computeSlaRemainingHours(req.slaDeadline);
+                      const slaRemainingHours = computeRequestSlaRemainingHours(req.slaDeadline, req.status);
                       return (
                           <tr
                             key={req.id}
@@ -705,8 +732,8 @@ export default function UserDashboard() {
                                 size="small"
                                 sx={{
                                   borderRadius: 1.5,
-                                  bgcolor: req.priority === "High" ? "rgba(239,68,68,0.12)" : "rgba(99,102,241,0.12)",
-                                  color: req.priority === "High" ? "#DC2626" : "#4338CA",
+                                  bgcolor: req.priority === "High" ? highPriorityBg : mediumPriorityBg,
+                                  color: req.priority === "High" ? highPriorityColor : mediumPriorityColor,
                                   fontWeight: 700,
                                 }}
                               />
@@ -714,7 +741,7 @@ export default function UserDashboard() {
                             <td style={{ padding: "12px 8px" }}>
                               <StatusChip status={req.status} />
                             </td>
-                            <td style={{ padding: "12px 8px", color: theme.palette.text.secondary }}>{req.stage}</td>
+                            <td style={{ padding: "12px 8px", color: tableMutedColor }}>{req.stage}</td>
                             <td style={{ padding: "12px 8px" }}>
                               <Stack direction="row" spacing={1} alignItems="center">
                                 <LinearProgress
@@ -730,11 +757,28 @@ export default function UserDashboard() {
                                     borderRadius: 999,
                                     backgroundColor: chartBg,
                                     "& .MuiLinearProgress-bar": {
-                                      background: slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "#22C55E",
+                                      background: typeof slaRemainingHours === "number"
+                                        ? slaRemainingHours < 8
+                                          ? "#EF4444"
+                                          : slaRemainingHours < 24
+                                          ? "#F59E0B"
+                                          : "#22C55E"
+                                        : theme.palette.action.disabledBackground,
                                     },
                                   }}
                                 />
-                                <Typography variant="caption" color={slaRemainingHours < 8 ? "#EF4444" : slaRemainingHours < 24 ? "#F59E0B" : "text.secondary"}>
+                                <Typography
+                                  variant="caption"
+                                  color={
+                                    typeof slaRemainingHours === "number"
+                                      ? slaRemainingHours < 8
+                                        ? "#EF4444"
+                                        : slaRemainingHours < 24
+                                        ? "#F59E0B"
+                                        : "text.secondary"
+                                      : "text.secondary"
+                                  }
+                                >
                                   {slaRemainingHours == null ? "—" : formatRelativeHours(slaRemainingHours)}
                                 </Typography>
                               </Stack>
@@ -783,16 +827,16 @@ export default function UserDashboard() {
                             <Typography fontWeight={700} lineHeight={1.2}>
                               {r.title}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: tableMutedColor }}>
                               Stage: {r.stage} • {r.requester}
                             </Typography>
                           </Box>
-                          <Chip label={formatRelativeHours(r.remaining)} size="small" sx={{ bgcolor: "rgba(0,0,0,0.04)", color: severity, fontWeight: 700, borderRadius: 1.5 }} />
+                          <Chip label={formatRelativeHours(r.remaining)} size="small" sx={{ bgcolor: riskChipBg, color: severity, fontWeight: 700, borderRadius: 1.5 }} />
                         </Stack>
                       );
                     })}
                     {!slaRisks.length && (
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: tableMutedColor }}>
                         All requests are within SLA.
                       </Typography>
                     )}

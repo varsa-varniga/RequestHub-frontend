@@ -1,15 +1,19 @@
 // src/pages/admin/Dashboard.jsx
 import { Box, Button, Grid, Paper, Stack, Typography, Chip, Divider } from "@mui/material";
-import { AddCircleOutline, Dashboard as DashboardIcon, PendingActions, TaskAlt, ErrorOutline, WarningAmber, History } from "@mui/icons-material";
+import { AddCircleOutline, Dashboard as DashboardIcon, PendingActions, TaskAlt, ErrorOutline, WarningAmber, History, NotificationsNone } from "@mui/icons-material";
 import { useMemo } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { useAdminData } from "../../context/AdminDataContext";
+import { useUnreadNotificationsCount } from "../../hooks/useNotifications";
 import { useRequestAnalytics, StatCard } from "./adminShared.jsx";
-import { computeSlaRemainingHours } from "../../utils/requestUtils";
+import { computeRequestSlaRemainingHours } from "../../utils/requestUtils";
 
 
 
 export default function AdminDashboardPage() {
   const { requests, users } = useAdminData();
+  const { user } = useAuth();
+  const { unreadCount } = useUnreadNotificationsCount(user?.id);
   const { stats, slaRisks } = useRequestAnalytics(requests);
 
   const workflowHealth = useMemo(() => {
@@ -28,7 +32,8 @@ export default function AdminDashboardPage() {
     };
 
     const remainingHours = (req) => {
-      const fromDeadline = computeSlaRemainingHours(req.slaDeadline);
+      if (req.status !== "Pending") return null;
+      const fromDeadline = computeRequestSlaRemainingHours(req.slaDeadline, req.status);
       if (fromDeadline != null) return fromDeadline;
       if (!req.createdAt || !req.slaHours) return null;
       const created = new Date(req.createdAt);
@@ -107,7 +112,8 @@ export default function AdminDashboardPage() {
   const slaRiskSplit = useMemo(() => {
     const buckets = { overdue: 0, dueSoon: 0, ok: 0 };
     requests.forEach((req) => {
-      const remaining = computeSlaRemainingHours(req.slaDeadline);
+      if (req.status !== "Pending") return;
+      const remaining = computeRequestSlaRemainingHours(req.slaDeadline, req.status);
       if (remaining == null) return;
       if (remaining <= 0) buckets.overdue += 1;
       else if (remaining <= 24) buckets.dueSoon += 1;
@@ -392,7 +398,7 @@ export default function AdminDashboardPage() {
         </Stack>
       </Stack>
 
-      <Grid container spacing={2} columns={{ xs: 12, sm: 12, md: 12, lg: 15 }} mb={3}>
+      <Grid container spacing={2} columns={{ xs: 12, sm: 12, md: 12, lg: 12 }} mb={3}>
         <Grid item xs={12} sm={6} md={4} lg={3}>
           <StatCard label="Total Requests" value={stats.total} color="#6366F1" icon={<DashboardIcon />} trend="+8%" />
         </Grid>
@@ -407,6 +413,15 @@ export default function AdminDashboardPage() {
         </Grid>
         <Grid item xs={12} sm={6} md={4} lg={3}>
           <StatCard label="SLA Alerts" value={slaRisks.length} color="#EAB308" icon={<WarningAmber />} trend="+2%" />
+        </Grid>
+        <Grid item xs={12} sm={6} md={4} lg={3}>
+          <StatCard
+            label="Unread Notifications"
+            value={unreadCount || 0}
+            color="#22C55E"
+            icon={<NotificationsNone />}
+            trend={unreadCount > 0 ? `${unreadCount} new` : "All clear"}
+          />
         </Grid>
       </Grid>
 

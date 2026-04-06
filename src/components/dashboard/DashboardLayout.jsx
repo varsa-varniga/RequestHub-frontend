@@ -54,6 +54,14 @@ const DRAWER_WIDTH_OPEN = 240;
 const DRAWER_WIDTH_COLLAPSED = 88;
 
 function NavItem({ item, selected, collapsed, onClick }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const activeBg = isDark ? "#123447" : "#dbeafe";
+  const hoverBg = isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9";
+  const idleColor = isDark ? "#E6EEF9" : "#334155";
+  const activeColor = isDark ? "#F8FBFF" : "#0f172a";
+  const activeIconColor = isDark ? "#22D3EE" : "#0f172a";
+
   return (
     <ListItemButton
       onClick={onClick}
@@ -66,12 +74,14 @@ function NavItem({ item, selected, collapsed, onClick }) {
         alignItems: "center",
         justifyContent: collapsed ? "center" : "flex-start",
         px: collapsed ? 1.5 : 2,
-        bgcolor: selected ? "#e8f0ff" : "transparent",
-        color: selected ? "#2563eb" : "#475569",
-        fontWeight: selected ? 500 : 400,
+        bgcolor: selected ? activeBg : "transparent",
+        color: selected ? activeColor : idleColor,
+        border: selected ? (isDark ? "1px solid rgba(103, 232, 249, 0.28)" : "1px solid #bfdbfe") : "1px solid transparent",
+        fontWeight: selected ? 700 : 600,
+        boxShadow: selected && isDark ? "0 10px 24px rgba(0, 0, 0, 0.28)" : "none",
         transition: "all 0.2s ease",
         "&:hover": {
-          bgcolor: selected ? "#e8f0ff" : "#f1f5f9",
+          bgcolor: selected ? activeBg : hoverBg,
           transform: "translateX(2px)",
         },
       }}
@@ -81,12 +91,12 @@ function NavItem({ item, selected, collapsed, onClick }) {
           minWidth: 0,
           mr: collapsed ? 0 : 1.5,
           justifyContent: "center",
-          color: selected ? "#2563eb" : "#475569",
+          color: selected ? activeIconColor : idleColor,
         }}
       >
         {item.icon}
       </ListItemIcon>
-      {!collapsed && <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 500, fontSize: "0.95rem" }} />}
+      {!collapsed && <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: selected ? 700 : 600, fontSize: "0.97rem" }} />}
     </ListItemButton>
   );
 }
@@ -194,7 +204,7 @@ function Sidebar({ collapsed, onToggle, onNavigate, activePath, onLogout, userNa
             <Typography variant="body2" fontWeight={700} color="text.primary">
               {userName || userEmail || "Employee"}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: (theme) => theme.palette.mode === "dark" ? "#C6D4EA" : "#475569" }} fontWeight={600}>
               {userEmail || "user@example.com"}
             </Typography>
           </Box>
@@ -279,7 +289,7 @@ function Topbar({ onOpenSidebar, showSearch, showMenu }) {
               <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
               <InputBase
                 placeholder="Search requests"
-                sx={{ flex: 1, fontSize: 14, color: "text.primary" }}
+                sx={{ flex: 1, fontSize: 14, fontWeight: 600, color: "text.primary" }}
                 inputProps={{ "aria-label": "search" }}
               />
             </Box>

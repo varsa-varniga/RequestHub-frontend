@@ -60,6 +60,13 @@ const NAV_ITEMS = [
 function Sidebar({ collapsed, onToggle, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const idleColor = isDark ? "#E6EEF9" : "#334155";
+  const activeColor = isDark ? "#F8FBFF" : "#0f172a";
+  const activeIconColor = isDark ? "#22D3EE" : "#0f172a";
+  const activeBg = isDark ? "#123447" : "#dbeafe";
+  const hoverBg = isDark ? "rgba(255,255,255,0.08)" : "action.hover";
 
 
   return (
@@ -137,10 +144,15 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
               mb: 0.5,
               px: collapsed ? 1 : 2,
               justifyContent: collapsed ? "center" : "flex-start",
-              color: location.pathname === item.path ? "primary.contrastText" : "text.secondary",
-              bgcolor: location.pathname === item.path ? "primary.main" : "transparent",
+              color: location.pathname === item.path ? activeColor : idleColor,
+              bgcolor: location.pathname === item.path ? activeBg : "transparent",
+              border: location.pathname === item.path
+                ? (isDark ? "1px solid rgba(103, 232, 249, 0.32)" : "1px solid #bfdbfe")
+                : "1px solid transparent",
+              fontWeight: location.pathname === item.path ? 700 : 600,
+              boxShadow: location.pathname === item.path && isDark ? "0 10px 24px rgba(0, 0, 0, 0.28)" : "none",
               "&:hover": {
-                bgcolor: location.pathname === item.path ? "primary.main" : "action.hover",
+                bgcolor: location.pathname === item.path ? activeBg : hoverBg,
               },
             }}
           >
@@ -148,14 +160,19 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
               sx={{
                 minWidth: 0,
                 mr: collapsed ? 0 : 1.5,
-                color: location.pathname === item.path ? "primary.contrastText" : "text.secondary",
+                color: location.pathname === item.path ? activeIconColor : idleColor,
                 display: "grid",
                 placeItems: "center",
               }}
             >
               {item.icon}
             </ListItemIcon>
-            {!collapsed && <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: 700 }} />}
+            {!collapsed && (
+              <ListItemText
+                primary={item.label}
+                primaryTypographyProps={{ fontWeight: location.pathname === item.path ? 700 : 600, fontSize: "0.97rem" }}
+              />
+            )}
           </ListItemButton>
         ))}
       </List>
@@ -171,7 +188,7 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
               variant="text"
               color="inherit"
               startIcon={<PersonIcon fontSize="small" />}
-              sx={{ justifyContent: "flex-start" }}
+              sx={{ justifyContent: "flex-start", fontWeight: 700 }}
               onClick={() => navigate("/admin/profile")}
             >
               Profile
@@ -182,7 +199,7 @@ function Sidebar({ collapsed, onToggle, onLogout }) {
               variant="text"
               color="inherit"
               startIcon={<Logout fontSize="small" />}
-              sx={{ justifyContent: "flex-start" }}
+              sx={{ justifyContent: "flex-start", fontWeight: 700 }}
               onClick={onLogout}
             >
               Logout
@@ -251,7 +268,7 @@ function Header({ onMenuClick }) {
           >
             <Stack direction="row" spacing={1} alignItems="center">
               <Search sx={{ color: "text.secondary", fontSize: 20 }} />
-              <InputBase placeholder="Search requests, people, teams..." sx={{ flex: 1 }} />
+              <InputBase placeholder="Search requests, people, teams..." sx={{ flex: 1, fontWeight: 600 }} />
               <Chip label="⌘ K" size="small" variant="outlined" sx={{ fontSize: "0.75rem", height: 24, borderRadius: 1.2 }} />
             </Stack>
           </Paper>
@@ -296,16 +313,18 @@ function Header({ onMenuClick }) {
                 setAnchor(null);
                 navigate("/admin/profile");
               }}
+              sx={{ fontWeight: 600 }}
             >
               Profile
             </MenuItem>
-            <MenuItem onClick={() => setAnchor(null)}>Settings</MenuItem>
+            <MenuItem onClick={() => setAnchor(null)} sx={{ fontWeight: 600 }}>Settings</MenuItem>
             <MenuItem
               onClick={() => {
                 setAnchor(null);
                 logout();
                 navigate("/login");
               }}
+              sx={{ fontWeight: 600 }}
             >
               Logout
             </MenuItem>

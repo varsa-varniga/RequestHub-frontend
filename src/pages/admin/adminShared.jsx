@@ -35,12 +35,14 @@ export function useRequestAnalytics(requests) {
     () =>
       requests
         .map((r) => {
-          const remaining = r.slaDeadline
-            ? computeSlaRemainingHours(r.slaDeadline)
-            : Math.max(0, (new Date(r.createdAt).getTime() + r.slaHours * 3600 * 1000 - now.getTime()) / 36e5);
-          return { ...r, remaining: remaining == null ? 0 : remaining };
+          const remaining = r.status === "Pending"
+            ? r.slaDeadline
+              ? computeSlaRemainingHours(r.slaDeadline)
+              : Math.max(0, (new Date(r.createdAt).getTime() + r.slaHours * 3600 * 1000 - now.getTime()) / 36e5)
+            : null;
+          return { ...r, remaining };
         })
-        .filter((r) => r.status === "Pending" || r.remaining < 24)
+        .filter((r) => r.status === "Pending" || (r.remaining != null && r.remaining < 24))
         .sort((a, b) => a.remaining - b.remaining),
     [requests, now]
   );
