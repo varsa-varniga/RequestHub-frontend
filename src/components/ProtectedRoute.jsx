@@ -3,11 +3,20 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, loading } = useAuth();
+  let activeUser = user;
+
+  if (!activeUser) {
+    try {
+      activeUser = JSON.parse(localStorage.getItem("auth_user") || "null");
+    } catch {
+      activeUser = null;
+    }
+  }
 
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!activeUser) return <Navigate to="/login" replace />;
 
-  const normalizedRole = (user.role || "")
+  const normalizedRole = (activeUser.role || "")
     .toString()
     .toUpperCase()
     .replace(/^ROLE_/, "");

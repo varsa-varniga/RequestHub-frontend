@@ -32,7 +32,14 @@ export default function NotificationsPanel({ userId }) {
     setError(null);
     try {
       const res = await API.get(`/notifications/${userId}`);
-      const list = Array.isArray(res.data) ? res.data : [];
+      const rawData = res.data;
+      const list = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.notifications)
+        ? rawData.notifications
+        : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
       setItems(list.map(normalizeNotification));
     } catch (err) {
       setError(err);

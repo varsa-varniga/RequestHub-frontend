@@ -17,6 +17,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  useTheme,
 } from "@mui/material";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import API from "../api/api";
@@ -66,6 +67,8 @@ const PRIORITY_COLORS = {
 };
 
 export default function MyRequestsPage() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [requests, setRequests] = useState([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -105,6 +108,19 @@ export default function MyRequestsPage() {
     if (sortBy === "status") return data.sort((a, b) => a.status.localeCompare(b.status));
     return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [filtered, sortBy]);
+
+  const cardBg = isDark ? "#0f172a" : "#fff";
+  const cardBorder = isDark ? "rgba(148,163,184,0.18)" : "#e5e7eb";
+  const headerColor = isDark ? "#DCE6F5" : "#475569";
+  const mutedColor = isDark ? "#B8C7DB" : theme.palette.text.secondary;
+  const rowHoverBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.02)";
+  const typeChipSx = {
+    fontWeight: 700,
+    borderRadius: 999,
+    borderColor: isDark ? "rgba(191,219,254,0.26)" : "rgba(148,163,184,0.5)",
+    color: isDark ? "#EAF2FF" : "#0f172a",
+    backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "transparent",
+  };
 
   return (
     <DashboardLayout
@@ -161,8 +177,8 @@ export default function MyRequestsPage() {
           sx={{
             p: 3,
             borderRadius: "16px",
-            border: "1px solid #e5e7eb",
-            backgroundColor: "#fff",
+            border: `1px solid ${cardBorder}`,
+            backgroundColor: cardBg,
             width: "100%",
             overflowX: "auto",
           }}
@@ -170,12 +186,12 @@ export default function MyRequestsPage() {
           <Table sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Request ID</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Request Title</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Priority</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#475569" }}>Created</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: headerColor, borderBottomColor: cardBorder }}>Request ID</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: headerColor, borderBottomColor: cardBorder }}>Request Title</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: headerColor, borderBottomColor: cardBorder }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: headerColor, borderBottomColor: cardBorder }}>Priority</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: headerColor, borderBottomColor: cardBorder }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: headerColor, borderBottomColor: cardBorder }}>Created</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -187,35 +203,39 @@ export default function MyRequestsPage() {
                   <TableRow
                     key={req.id}
                     hover
-                    sx={{ cursor: "pointer" }}
+                    sx={{
+                      cursor: "pointer",
+                      "& td": { borderBottomColor: cardBorder },
+                      "&:hover": { backgroundColor: rowHoverBg },
+                    }}
                     onClick={() => navigate(`/requests/${req.id}`)}
                   >
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                      <Typography variant="body2" sx={{ color: mutedColor }} fontWeight={700}>
                         {req.id}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography fontWeight={700}>{req.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography fontWeight={700} color="text.primary">{req.title}</Typography>
+                      <Typography variant="body2" sx={{ color: mutedColor }}>
                         {req.stageLabel}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip label={req.type} size="small" variant="outlined" />
+                      <Chip label={req.type} size="small" variant="outlined" sx={typeChipSx} />
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={req.priority}
                         size="small"
-                        sx={{ bgcolor: priorityColors.bg, color: priorityColors.color }}
+                        sx={{ bgcolor: priorityColors.bg, color: priorityColors.color, fontWeight: 700 }}
                       />
                     </TableCell>
                     <TableCell>
-                      <Chip label={req.status} size="small" sx={{ bgcolor: colors.bg, color: colors.color }} />
+                      <Chip label={req.status} size="small" sx={{ bgcolor: colors.bg, color: colors.color, fontWeight: 700 }} />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{ color: mutedColor }}>
                         {createdLabel}
                       </Typography>
                     </TableCell>

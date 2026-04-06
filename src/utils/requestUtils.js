@@ -55,6 +55,16 @@ export const computeSlaRemainingHours = (slaDeadline) => {
   return Math.max(0, (due.getTime() - Date.now()) / 36e5);
 };
 
+export const isActiveSlaStatus = (status) => {
+  const raw = (status || "").toString().toUpperCase();
+  return raw === "PENDING";
+};
+
+export const computeRequestSlaRemainingHours = (slaDeadline, status) => {
+  if (!isActiveSlaStatus(status)) return null;
+  return computeSlaRemainingHours(slaDeadline);
+};
+
 export const mapRequestDto = (dto) => {
   const requestTypeObject = dto.requestType;
   const type =

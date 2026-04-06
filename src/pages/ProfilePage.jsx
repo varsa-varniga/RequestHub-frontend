@@ -1,47 +1,53 @@
-// src/pages/ProfilePage.jsx
-// React + MUI v5 — Full Profile Page
-// Requires: @mui/material, @mui/icons-material, @emotion/react, @emotion/styled
-
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Avatar,
   Box,
   Button,
-  Chip,
+  Checkbox,
+  Divider,
   Grid,
   IconButton,
   InputAdornment,
-  LinearProgress,
+  MenuItem,
   Paper,
   Snackbar,
   Stack,
-  Switch,
   TextField,
-  Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 import {
-  Edit as EditIcon,
-  Save as SaveIcon,
-  Lock as LockIcon,
-  Tune as TuneIcon,
-  VerifiedUser as VerifiedUserIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon,
-  Logout as LogoutIcon,
-  AccessTime as AccessTimeIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Shield as ShieldIcon,
+  ArrowBack,
+  Edit,
+  Lock,
+  Palette,
+  PersonOutline,
+  NotificationsActive,
+  Save,
+  Visibility,
+  VisibilityOff,
 } from "@mui/icons-material";
-import DashboardLayout from "../components/dashboard/DashboardLayout";
 import API from "../api/api";
 import { useThemeMode } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-
-const EMPTY_USER = { id: "", name: "", email: "", role: "USER", active: true };
+const EMPTY_USER = {
+  id: "",
+  name: "",
+  email: "",
+  role: "USER",
+  active: true,
+  phone: "",
+  department: "General",
+  roleNumber: "",
+  createdAt: "",
+  emailVerified: false,
+  lastLogin: "",
+  lastPasswordChange: "",
+  activeSessions: 0,
+};
 
 const MOCK_USER = {
   id: "u-1002",
@@ -49,6 +55,9 @@ const MOCK_USER = {
   email: "samantha.lee@requesthub.io",
   role: "USER",
   active: true,
+  phone: "+91 9876543210",
+  department: "General",
+  roleNumber: "135",
   createdAt: "January 12, 2024",
   emailVerified: true,
   lastLogin: "Today, 09:41 AM",
@@ -56,647 +65,647 @@ const MOCK_USER = {
   activeSessions: 2,
 };
 
-// ─── Shared sx helpers ───────────────────────────────────────────────────────
+const SECTION_ITEMS = [
+  { key: "profile", label: "Profile Info", icon: PersonOutline },
+  { key: "password", label: "Change Password", icon: Lock },
+  { key: "notifications", label: "Notification Preferences", icon: NotificationsActive },
+  { key: "appearance", label: "Appearance", icon: Palette },
+];
 
-const cardSx = (theme) => ({
-  p: { xs: 2.5, sm: 3.5 },
-  borderRadius: "18px",
-  border: "1px solid",
-  borderColor: "divider",
-  bgcolor: "background.paper",
-  boxShadow:
-    theme.palette.mode === "dark"
-      ? "0 2px 12px rgba(0,0,0,.35)"
-      : "0 1px 4px rgba(0,0,0,.06), 0 4px 20px rgba(0,0,0,.05)",
-  transition: "border-color .2s, box-shadow .2s",
-  "&:hover": {
-    borderColor: "primary.main",
-    boxShadow:
-      theme.palette.mode === "dark"
-        ? "0 4px 24px rgba(0,0,0,.5)"
-        : "0 4px 24px rgba(0,0,0,.10)",
-  },
-});
+function getShellStyles(theme) {
+  const isDark = theme.palette.mode === "dark";
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+  return {
+    pageBg: isDark
+      ? "linear-gradient(180deg, #0f172a 0%, #111b32 100%)"
+      : "linear-gradient(180deg, #f6f8fc 0%, #eef3fb 100%)",
+    sideBg: isDark ? "rgba(30, 41, 59, 0.82)" : "rgba(255, 255, 255, 0.9)",
+    panelBg: isDark ? "rgba(30, 41, 59, 0.9)" : "rgba(255, 255, 255, 0.96)",
+    fieldBg: isDark ? "#223049" : "#f8fafc",
+    activeBg: isDark ? "#294777" : "#dbeafe",
+    idleBg: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(15, 23, 42, 0.03)",
+    border: isDark ? "rgba(148, 163, 184, 0.18)" : "rgba(148, 163, 184, 0.22)",
+    muted: isDark ? "#C7D4E8" : "#475569",
+    shadow: isDark ? "0 24px 60px rgba(2, 6, 23, 0.38)" : "0 24px 60px rgba(15, 23, 42, 0.12)",
+  };
+}
 
-function SectionHeader({ icon: Icon, title, subtitle }) {
+function SectionButton({ item, active, onClick }) {
+  const theme = useTheme();
+  const styles = getShellStyles(theme);
+  const Icon = item.icon;
+
   return (
-    <Stack
-      direction="row"
-      spacing={1.5}
-      alignItems="center"
-      mb={2.5}
-      pb={2}
-      sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+    <Button
+      fullWidth
+      onClick={onClick}
+      startIcon={<Icon fontSize="small" />}
+      sx={{
+        justifyContent: "flex-start",
+        px: 2,
+        py: 1.5,
+        borderRadius: "14px",
+        color: active ? (theme.palette.mode === "dark" ? "#FFFFFF" : "#0f172a") : "text.primary",
+        bgcolor: active ? styles.activeBg : styles.idleBg,
+        border: active ? (theme.palette.mode === "dark" ? "1px solid rgba(191, 219, 254, 0.85)" : "1px solid #93c5fd") : `1px solid ${styles.border}`,
+        fontSize: "0.94rem",
+        fontWeight: active ? 700 : 600,
+        textTransform: "none",
+        boxShadow: active ? (theme.palette.mode === "dark" ? "0 8px 24px rgba(15, 23, 42, 0.35)" : "0 10px 24px rgba(59, 130, 246, 0.12)") : "none",
+        gap: 1,
+        whiteSpace: "nowrap",
+        "& .MuiButton-startIcon": {
+          marginRight: 0,
+          marginLeft: 0,
+          flexShrink: 0,
+          color: active ? (theme.palette.mode === "dark" ? "#22D3EE" : "#1d4ed8") : "inherit",
+        },
+        "&:hover": {
+          bgcolor: active ? styles.activeBg : styles.idleBg,
+        },
+      }}
     >
+      {item.label}
+    </Button>
+  );
+}
+
+function ProfileFields({ draft, editing, onChange, initials }) {
+  const theme = useTheme();
+  const styles = getShellStyles(theme);
+
+  const fieldSx = {
+    "& .MuiOutlinedInput-root": {
+      bgcolor: styles.fieldBg,
+      borderRadius: "14px",
+      fontWeight: 600,
+    },
+  };
+
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "180px minmax(0, 1fr)" },
+        gap: { xs: 3, md: 4 },
+        alignItems: "start",
+      }}
+    >
+      <Box>
+        <Typography fontSize="0.85rem" color={styles.muted} mb={1.25}>
+          Profile Photo
+        </Typography>
+        <Paper
+          elevation={0}
+          sx={{
+            width: 128,
+            height: 128,
+            borderRadius: "20px",
+            bgcolor: styles.fieldBg,
+            border: `1px solid ${styles.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Avatar
+            sx={{
+              width: 88,
+              height: 88,
+              bgcolor: "primary.main",
+              color: "#fff",
+              fontSize: "2rem",
+              fontWeight: 800,
+            }}
+          >
+            {initials}
+          </Avatar>
+        </Paper>
+      </Box>
+
       <Box
         sx={{
-          width: 36, height: 36, borderRadius: "10px",
-          bgcolor: "primary.main",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+          gap: 2.25,
         }}
       >
-        <Icon sx={{ fontSize: 18, color: "#fff" }} />
+        <Box sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}>
+            <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+              Full Name
+            </Typography>
+            <TextField
+              fullWidth
+              value={draft.name}
+              onChange={(e) => onChange("name", e.target.value)}
+              disabled={!editing}
+              sx={fieldSx}
+            />
+        </Box>
+
+        <Box sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}>
+            <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+              Email
+            </Typography>
+            <TextField
+              fullWidth
+              value={draft.email}
+              onChange={(e) => onChange("email", e.target.value)}
+              disabled={!editing}
+              sx={fieldSx}
+            />
+        </Box>
+
+        <Box>
+            <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+              Phone Number
+            </Typography>
+            <TextField
+              fullWidth
+              value={draft.phone}
+              onChange={(e) => onChange("phone", e.target.value)}
+              disabled={!editing}
+              placeholder="+91 1234567890"
+              sx={fieldSx}
+            />
+        </Box>
+
+        <Box>
+            <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+              Department
+            </Typography>
+            <TextField
+              select
+              fullWidth
+              value={draft.department}
+              onChange={(e) => onChange("department", e.target.value)}
+              disabled={!editing}
+              sx={fieldSx}
+            >
+              {["General", "Operations", "IT", "Compliance", "Finance"].map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+        </Box>
+
+        <Box>
+            <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+              Role
+            </Typography>
+            <TextField fullWidth value={draft.role} disabled sx={fieldSx} />
+        </Box>
+
+        <Box>
+            <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+              Role Number / ID
+            </Typography>
+            <TextField
+              fullWidth
+              value={draft.roleNumber}
+              onChange={(e) => onChange("roleNumber", e.target.value)}
+              disabled={!editing}
+              sx={fieldSx}
+            />
+        </Box>
       </Box>
-      <Box>
-        <Typography variant="subtitle1" fontWeight={800} lineHeight={1.2} letterSpacing="-.01em">
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="caption" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
+    </Box>
+  );
+}
+
+function NotificationRows({ values, onToggle }) {
+  const theme = useTheme();
+  const styles = getShellStyles(theme);
+
+  const rows = [
+    { key: "notifications", title: "Ticket Update Notifications", subtitle: "Receive alerts when your request status changes" },
+    { key: "emailDigest", title: "Weekly Email Digest", subtitle: "Get a summary of open and resolved requests" },
+  ];
+
+  return (
+    <Stack divider={<Divider sx={{ borderColor: styles.border }} />}>
+      {rows.map((row) => (
+        <Box key={row.key} sx={{ py: 0.95, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25 }}>
+          <Box>
+            <Typography fontWeight={700}>{row.title}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {row.subtitle}
+            </Typography>
+          </Box>
+          <Checkbox
+            checked={values[row.key]}
+            onChange={(e) => onToggle(row.key, e.target.checked)}
+            sx={{
+              color: "primary.main",
+              p: 0.25,
+              ml: 1,
+              "&.Mui-checked": { color: "primary.main" },
+            }}
+          />
+        </Box>
+      ))}
     </Stack>
   );
 }
 
-function MetaPill({ icon: Icon, label }) {
-  return (
-    <Box
-      sx={{
-        display: "inline-flex", alignItems: "center", gap: 0.75,
-        px: 1.25, py: 0.6, borderRadius: "8px",
-        bgcolor: "action.hover", border: "1px solid", borderColor: "divider",
-      }}
-    >
-      <Icon sx={{ fontSize: 13, color: "text.secondary" }} />
-      <Typography variant="caption" color="text.secondary" fontWeight={500}>
-        {label}
-      </Typography>
-    </Box>
-  );
-}
+function AppearanceFields({ selectedTheme, fontSize, onThemeChange, onFontSizeChange }) {
+  const theme = useTheme();
+  const styles = getShellStyles(theme);
 
-function FieldLabel({ children }) {
-  return (
-    <Typography
-      variant="caption"
-      color="text.secondary"
-      fontWeight={700}
-      letterSpacing=".05em"
-      textTransform="uppercase"
-      display="block"
-      mb={0.75}
-    >
-      {children}
-    </Typography>
-  );
-}
-
-function PasswordStrengthBar({ password }) {
-  const getStrength = (pw) => {
-    if (!pw) return { score: 0, label: "", color: "grey.300" };
-    let s = 0;
-    if (pw.length >= 8) s++;
-    if (/[A-Z]/.test(pw)) s++;
-    if (/[0-9]/.test(pw)) s++;
-    if (/[^A-Za-z0-9]/.test(pw)) s++;
-    const levels = [
-      { label: "Weak",   color: "error.main"  },
-      { label: "Fair",   color: "warning.main" },
-      { label: "Good",   color: "info.main"    },
-      { label: "Strong", color: "success.main" },
-    ];
-    return { score: s, ...(levels[s - 1] || { label: "", color: "grey.400" }) };
+  const fieldSx = {
+    "& .MuiOutlinedInput-root": {
+      bgcolor: styles.fieldBg,
+      borderRadius: "14px",
+      fontWeight: 600,
+    },
   };
 
-  const { score, label, color } = getStrength(password);
-  if (!password) return null;
-
-  return (
-    <Box mt={0.75}>
-      <Stack direction="row" spacing={0.5} mb={0.5}>
-        {[1, 2, 3, 4].map((i) => (
-          <Box
-            key={i}
-            sx={{
-              flex: 1, height: 3, borderRadius: 4,
-              bgcolor: i <= score ? color : "divider",
-              transition: "background-color .3s",
-            }}
-          />
-        ))}
-      </Stack>
-      <Typography variant="caption" sx={{ color, fontWeight: 700 }}>
-        {label}
-      </Typography>
-    </Box>
-  );
-}
-
-function PrefRow({ title, subtitle, checked, onChange }) {
   return (
     <Box
       sx={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        py: 1.75,
-        borderBottom: "1px solid", borderColor: "divider",
-        "&:last-child": { borderBottom: "none" },
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+        columnGap: { xs: 0, md: 4 },
+        rowGap: 2,
+        alignItems: "start",
       }}
     >
       <Box>
-        <Typography variant="body2" fontWeight={700}>{title}</Typography>
-        <Typography variant="caption" color="text.secondary">{subtitle}</Typography>
+        <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+          Theme
+        </Typography>
+        <TextField select fullWidth value={selectedTheme} onChange={(e) => onThemeChange(e.target.value)} sx={fieldSx}>
+          <MenuItem value="light">Light</MenuItem>
+          <MenuItem value="dark">Dark</MenuItem>
+        </TextField>
       </Box>
-      <Switch checked={checked} onChange={onChange} size="small" />
+      <Box>
+        <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+          Font Size
+        </Typography>
+        <TextField select fullWidth value={fontSize} onChange={(e) => onFontSizeChange(e.target.value)} sx={fieldSx}>
+          <MenuItem value="small">Small</MenuItem>
+          <MenuItem value="medium">Medium</MenuItem>
+          <MenuItem value="large">Large</MenuItem>
+        </TextField>
+      </Box>
     </Box>
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
-
 export default function ProfilePage() {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const styles = getShellStyles(theme);
   const { mode, toggleMode } = useThemeMode();
+  const { user: authUser } = useAuth();
 
-  const [user, setUser]   = useState(EMPTY_USER);
+  const [activeSection, setActiveSection] = useState("profile");
   const [draft, setDraft] = useState(EMPTY_USER);
-  const [loading, setLoading] = useState(false);
-
-  // Edit profile state
   const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [nameError, setNameError] = useState("");
-
-  // Password state
+  const [loading, setLoading] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
   const [pwErrors, setPwErrors] = useState({});
-
-  // Preferences
   const [notifications, setNotifications] = useState(true);
-  const [emailDigest, setEmailDigest]     = useState(false);
-
-  // Toast
+  const [emailDigest, setEmailDigest] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState(mode);
+  const [fontSize, setFontSize] = useState("medium");
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
+
   const notify = useCallback((text, type = "success") => setToast({ open: true, type, text }), []);
 
-  // ── Fetch ──
-  useEffect(() => { fetchProfile(); }, []);
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    setSelectedTheme(mode);
+  }, [mode]);
 
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res  = await API.get("/auth/me");
-      const data = { ...MOCK_USER, ...res.data };
-      setUser(data); setDraft(data); setEditName(data.name);
+      const res = await API.get("/auth/me");
+      const nextUser = {
+        ...MOCK_USER,
+        ...res.data,
+        phone: res.data?.phone || MOCK_USER.phone,
+        department: res.data?.department || MOCK_USER.department,
+        roleNumber: res.data?.roleNumber || String(res.data?.id || MOCK_USER.roleNumber).replace(/^[A-Za-z-]+/, "") || MOCK_USER.roleNumber,
+      };
+      setDraft(nextUser);
     } catch {
-      setUser(MOCK_USER); setDraft(MOCK_USER); setEditName(MOCK_USER.name);
-      notify("Using mock profile data (API unavailable).", "warning");
+      setDraft(MOCK_USER);
+      notify("Using mock profile data because the profile API is unavailable.", "warning");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Avatar initials & completion ──
   const initials = useMemo(() => {
-    const seed  = draft.name || draft.email || "U";
+    const seed = draft.name || draft.email || "U";
     const parts = seed.trim().split(" ");
     return parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
       : seed.slice(0, 2).toUpperCase();
   }, [draft.name, draft.email]);
 
-  const completionPct = useMemo(() => {
-    let s = 0;
-    if (draft.name)          s += 25;
-    if (draft.email)         s += 25;
-    if (draft.emailVerified) s += 25;
-    if (draft.id)            s += 25;
-    return s;
-  }, [draft]);
+  const handleDraftChange = (field, value) => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+  };
 
-  // ── Edit handlers ──
-  const handleEditToggle = () => {
-    if (!editing) {
-      setEditName(draft.name); setNameError(""); setEditing(true);
-    } else {
-      if (!editName.trim()) { setNameError("Name cannot be empty."); return; }
-      setDraft((p) => ({ ...p, name: editName.trim() }));
-      setEditing(false); setNameError("");
-      notify("Profile updated successfully!");
+  const handleSaveProfile = () => {
+    if (!draft.name.trim()) {
+      notify("Name cannot be empty.", "error");
+      return;
+    }
+    setEditing(false);
+    notify("Profile updated successfully.");
+  };
+
+  const handlePasswordUpdate = async () => {
+    const nextErrors = {};
+    if (!passwordForm.current) nextErrors.current = "Current password is required.";
+    if (!passwordForm.next || passwordForm.next.length < 8) nextErrors.next = "Password must be at least 8 characters.";
+    if (passwordForm.next !== passwordForm.confirm) nextErrors.confirm = "Passwords do not match.";
+    setPwErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
+    const targetId = authUser?.id || draft?.id;
+    if (!targetId) {
+      notify("Unable to update password because the user id was not found.", "error");
+      return;
+    }
+
+    setPwLoading(true);
+    try {
+      await API.post(`/users/${targetId}/change-password`, {
+        oldPassword: passwordForm.current,
+        newPassword: passwordForm.next,
+      });
+      const nextUser = { ...draft, lastPasswordChange: "Just now" };
+      setDraft(nextUser);
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      setPwErrors({});
+      notify("Password updated successfully.");
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Password update failed.";
+      notify(message, "error");
+    } finally {
+      setPwLoading(false);
     }
   };
 
-  // ── Password handler ──
-  const handlePasswordUpdate = () => {
-    const errs = {};
-    if (!passwordForm.current)                    errs.current = "Current password is required.";
-    if (!passwordForm.next || passwordForm.next.length < 8) errs.next = "Must be at least 8 characters.";
-    if (passwordForm.next !== passwordForm.confirm) errs.confirm = "Passwords do not match.";
-    setPwErrors(errs);
-    if (Object.keys(errs).length) return;
-    setPasswordForm({ current: "", next: "", confirm: "" });
-    setPwErrors({});
-    notify("Password updated successfully!");
+  const handleAppearanceSave = () => {
+    if (selectedTheme !== mode) {
+      toggleMode();
+    }
+    notify(`Appearance settings saved. Font size preference: ${fontSize}.`);
   };
 
-  const pwToggle = (field) => setShowPw((p) => ({ ...p, [field]: !p[field] }));
+  const actionBySection = {
+    profile: (
+      <Button
+        variant={editing ? "contained" : "outlined"}
+        startIcon={editing ? <Save /> : <Edit />}
+        onClick={editing ? handleSaveProfile : () => setEditing(true)}
+        sx={{ borderRadius: "14px", px: 2.25, fontWeight: 700, textTransform: "none" }}
+      >
+        {editing ? "Save" : "Edit"}
+      </Button>
+    ),
+    password: (
+      <Button
+        variant="contained"
+        onClick={handlePasswordUpdate}
+        disabled={loading || pwLoading}
+        sx={{ borderRadius: "14px", px: 2.25, fontWeight: 700, textTransform: "none" }}
+      >
+        Update Password
+      </Button>
+    ),
+    notifications: (
+      <Button
+        variant="contained"
+        onClick={() => notify("Notification preferences saved.")}
+        sx={{ borderRadius: "14px", px: 2.25, fontWeight: 700, textTransform: "none" }}
+      >
+        Save Preferences
+      </Button>
+    ),
+    appearance: (
+      <Button
+        variant="contained"
+        onClick={handleAppearanceSave}
+        sx={{ borderRadius: "14px", px: 2.25, fontWeight: 700, textTransform: "none" }}
+      >
+        Save Settings
+      </Button>
+    ),
+  };
 
-  // ─── Render ──────────────────────────────────────────────────────────────
+  const panelMinHeight = activeSection === "profile" ? 520 : activeSection === "password" ? 360 : 220;
+
   return (
-    <DashboardLayout showSearch={false}>
-      <Box sx={{ maxWidth: 980, mx: "auto", width: "100%" }}>
-        <Stack spacing={3}>
-
-          {/* ── Page Title ── */}
-          <Box
-            display="flex"
-            alignItems={{ sm: "center" }}
-            justifyContent="space-between"
-            flexWrap="wrap"
-            gap={2}
-          >
-            <Box>
-              <Typography variant="h4" fontWeight={800} letterSpacing="-.03em">
-                Account Settings
-              </Typography>
-              <Typography color="text.secondary" variant="body2" mt={0.5}>
-                Manage your profile, security, and preferences.
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              startIcon={<LogoutIcon />}
-              onClick={() => notify("You have been logged out.", "info")}
-              sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}
-            >
-              Logout
-            </Button>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: styles.pageBg,
+        p: { xs: 2, md: 3.5 },
+      }}
+    >
+      <Stack spacing={3}>
+        <Box display="flex" alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between" gap={2} flexWrap="wrap">
+          <Box>
+            <Typography variant="h4" fontWeight={800} letterSpacing="-0.03em">
+              User Profile
+            </Typography>
+            <Typography color={styles.muted} variant="body1" mt={0.6}>
+              Manage your account securely
+            </Typography>
           </Box>
 
-          {/* ══ PROFILE HEADER ══ */}
-          <Paper elevation={0} sx={cardSx}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5} pb={2} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
-              <Typography variant="subtitle1" fontWeight={800} letterSpacing="-.01em">
-                Profile Overview
-              </Typography>
-              <Button
-                variant={editing ? "contained" : "outlined"}
-                size="small"
-                startIcon={editing ? <SaveIcon /> : <EditIcon />}
-                onClick={handleEditToggle}
+          <Button
+            variant="contained"
+            startIcon={<ArrowBack />}
+            onClick={() => navigate(-1)}
+            sx={{
+              borderRadius: "16px",
+              px: 2.2,
+              py: 1.1,
+              fontWeight: 700,
+              textTransform: "none",
+              boxShadow: styles.shadow,
+            }}
+          >
+            Back
+          </Button>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "320px minmax(0, 1fr)" },
+            gap: 3,
+            alignItems: "start",
+          }}
+        >
+          <Box>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.8,
+                borderRadius: "20px",
+                bgcolor: styles.sideBg,
+                border: `1px solid ${styles.border}`,
+                boxShadow: styles.shadow,
+                backdropFilter: "blur(16px)",
+                maxWidth: 300,
+              }}
+            >
+              <Stack spacing={1.2}>
+                {SECTION_ITEMS.map((item) => (
+                  <SectionButton
+                    key={item.key}
+                    item={item}
+                    active={activeSection === item.key}
+                    onClick={() => setActiveSection(item.key)}
+                  />
+                ))}
+              </Stack>
+            </Paper>
+          </Box>
+
+          <Box>
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: "24px",
+                bgcolor: styles.panelBg,
+                border: `1px solid ${styles.border}`,
+                boxShadow: styles.shadow,
+                overflow: "hidden",
+                backdropFilter: "blur(16px)",
+                minHeight: panelMinHeight,
+              }}
+            >
+              <Box
                 sx={{
-                  borderRadius: "10px",
-                  textTransform: "none",
-                  fontWeight: 700,
-                  ...(editing
-                    ? { background: "linear-gradient(135deg,#2563eb,#0ea5e9)", boxShadow: "0 3px 10px rgba(37,99,235,.25)" }
-                    : {}),
+                  px: { xs: 2, md: 3 },
+                  py: 2.2,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 2,
+                  borderBottom: `1px solid ${styles.border}`,
                 }}
               >
-                {editing ? "Save" : "Edit"}
-              </Button>
-            </Box>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={3}
-              alignItems={{ xs: "center", sm: "flex-start" }}
-            >
-              {/* Avatar */}
-              <Box sx={{ position: "relative", flexShrink: 0 }}>
-                <Avatar
-                  sx={{
-                    width: 88, height: 88,
-                    background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)",
-                    fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-.02em",
-                    boxShadow: "0 6px 20px rgba(37,99,235,.28)",
-                  }}
-                >
-                  {initials}
-                </Avatar>
-                {draft.active && (
-                  <Box
-                    sx={{
-                      position: "absolute", bottom: 4, right: 4,
-                      width: 14, height: 14, borderRadius: "50%",
-                      bgcolor: "success.main",
-                      border: "2.5px solid", borderColor: "background.paper",
+                <Typography variant="h6" fontWeight={800}>
+                  {SECTION_ITEMS.find((item) => item.key === activeSection)?.label}
+                </Typography>
+                {actionBySection[activeSection]}
+              </Box>
+
+              <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.25 } }}>
+                {activeSection === "profile" && (
+                  <Stack spacing={3.2}>
+                    <ProfileFields draft={draft} editing={editing} onChange={handleDraftChange} initials={initials} />
+                  </Stack>
+                )}
+
+                {activeSection === "password" && (
+                  <Stack spacing={2.2}>
+                    {[
+                      { key: "current", label: "Current Password", placeholder: "Enter current password" },
+                      { key: "next", label: "New Password", placeholder: "Enter new password" },
+                      { key: "confirm", label: "Confirm New Password", placeholder: "Confirm new password" },
+                    ].map((field) => (
+                      <Box key={field.key}>
+                        <Typography fontSize="0.92rem" fontWeight={700} color="text.primary" mb={0.9}>
+                          {field.label}
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          type={showPw[field.key] ? "text" : "password"}
+                          value={passwordForm[field.key]}
+                          onChange={(e) => {
+                            setPasswordForm((prev) => ({ ...prev, [field.key]: e.target.value }));
+                            setPwErrors((prev) => ({ ...prev, [field.key]: "" }));
+                          }}
+                          error={Boolean(pwErrors[field.key])}
+                          helperText={pwErrors[field.key] || " "}
+                          placeholder={field.placeholder}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              bgcolor: styles.fieldBg,
+                              borderRadius: "14px",
+                            },
+                          }}
+                          InputProps={{
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <IconButton onClick={() => setShowPw((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}>
+                                  {showPw[field.key] ? <VisibilityOff /> : <Visibility />}
+                                </IconButton>
+                              </InputAdornment>
+                            ),
+                          }}
+                        />
+                      </Box>
+                    ))}
+
+                    <Typography variant="body2" color={styles.muted}>
+                      Password policy: minimum 8 characters, include at least 1 number and 1 special character.
+                    </Typography>
+                  </Stack>
+                )}
+
+                {activeSection === "notifications" && (
+                  <NotificationRows
+                    values={{ notifications, emailDigest }}
+                    onToggle={(key, checked) => {
+                      if (key === "notifications") setNotifications(checked);
+                      if (key === "emailDigest") setEmailDigest(checked);
                     }}
                   />
                 )}
-              </Box>
 
-              {/* Identity */}
-              <Box flex={1} textAlign={{ xs: "center", sm: "left" }}>
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  alignItems={{ xs: "center", sm: "center" }}
-                  spacing={1}
-                  mb={0.5}
-                >
-                  {editing ? (
-                    <TextField
-                      value={editName}
-                      onChange={(e) => { setEditName(e.target.value); setNameError(""); }}
-                      size="small"
-                      error={Boolean(nameError)}
-                      helperText={nameError}
-                      placeholder="Full name"
-                      InputProps={{ sx: { borderRadius: "10px", fontWeight: 700 } }}
-                      sx={{ minWidth: { xs: "100%", sm: 240 } }}
-                    />
-                  ) : (
-                    <Typography variant="h5" fontWeight={800} letterSpacing="-.025em">
-                      {draft.name || "Unnamed User"}
-                    </Typography>
-                  )}
-                  {draft.emailVerified && (
-                    <Tooltip title="Email verified">
-                      <CheckCircleIcon sx={{ color: "success.main", fontSize: 20 }} />
-                    </Tooltip>
-                  )}
-                </Stack>
-
-                <Typography
-                  variant="body2" color="text.secondary" mb={1.5}
-                  sx={{ fontFamily: "monospace", fontSize: ".82rem" }}
-                >
-                  {draft.email}
-                </Typography>
-
-                <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent={{ xs: "center", sm: "flex-start" }}>
-                  <Chip
-                    label={draft.role} color="primary" size="small"
-                    sx={{ fontWeight: 800, borderRadius: "8px", fontSize: ".68rem", letterSpacing: ".04em" }}
+                {activeSection === "appearance" && (
+                  <AppearanceFields
+                    selectedTheme={selectedTheme}
+                    fontSize={fontSize}
+                    onThemeChange={setSelectedTheme}
+                    onFontSizeChange={setFontSize}
                   />
-                  <Chip
-                    icon={<CheckCircleIcon sx={{ fontSize: "13px !important" }} />}
-                    label={draft.active ? "Active" : "Inactive"}
-                    color={draft.active ? "success" : "default"}
-                    size="small" variant="outlined"
-                    sx={{ fontWeight: 700, borderRadius: "8px", fontSize: ".68rem" }}
-                  />
-                  <Chip
-                    label={`ID: ${draft.id || "—"}`}
-                    size="small" variant="outlined"
-                    sx={{
-                      fontWeight: 500, borderRadius: "8px", fontSize: ".68rem",
-                      color: "text.secondary", fontFamily: "monospace", borderColor: "divider",
-                    }}
-                  />
-                </Stack>
+                )}
               </Box>
-            </Stack>
+            </Paper>
+          </Box>
+        </Box>
+      </Stack>
 
-            {/* Completion bar */}
-            <Box mt={3} pt={2.5} sx={{ borderTop: "1px solid", borderColor: "divider" }}>
-              <Box display="flex" justifyContent="space-between" mb={0.75}>
-                <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                  Profile Completion
-                </Typography>
-                <Typography variant="caption" fontWeight={800} color="primary.main">
-                  {completionPct}%
-                </Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={completionPct}
-                sx={{
-                  height: 6, borderRadius: 4, bgcolor: "action.hover",
-                  "& .MuiLinearProgress-bar": {
-                    borderRadius: 4,
-                    background: "linear-gradient(90deg, #2563eb, #0ea5e9)",
-                  },
-                }}
-              />
-              {completionPct < 100 && (
-                <Typography variant="caption" color="text.secondary" mt={0.5} display="block">
-                  Add a profile photo and phone number to reach 100%
-                </Typography>
-              )}
-            </Box>
-          </Paper>
-
-          {/* ══ SECURITY ══ */}
-          <Grid container spacing={2.5} alignItems="stretch">
-            <Grid item xs={12} md={12}>
-              <Paper elevation={0} sx={cardSx}>
-                <SectionHeader
-                  icon={LockIcon}
-                  title="Security Settings"
-                  subtitle="Update your password"
-                />
-
-                {/* Meta pills */}
-                <Stack direction="row" spacing={1} flexWrap="wrap" mb={2.5}>
-                  <MetaPill icon={AccessTimeIcon} label={`Last login: ${draft.lastLogin || "N/A"}`} />
-                  <MetaPill icon={ShieldIcon}     label={`Password: ${draft.lastPasswordChange || "N/A"}`} />
-                </Stack>
-
-                <Stack spacing={2}>
-                  {/* Current password */}
-                  <Box>
-                    <FieldLabel>Current Password</FieldLabel>
-                    <TextField
-                      type={showPw.current ? "text" : "password"}
-                      value={passwordForm.current}
-                      onChange={(e) => { setPasswordForm((p) => ({ ...p, current: e.target.value })); setPwErrors((e2) => ({ ...e2, current: "" })); }}
-                      size="small" fullWidth
-                      error={Boolean(pwErrors.current)}
-                      helperText={pwErrors.current}
-                      placeholder="Enter current password"
-                      InputProps={{
-                        sx: { borderRadius: "10px" },
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton size="small" onClick={() => pwToggle("current")} edge="end">
-                              {showPw.current ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Box>
-
-                  {/* New password + strength */}
-                  <Box>
-                    <FieldLabel>New Password</FieldLabel>
-                    <TextField
-                      type={showPw.next ? "text" : "password"}
-                      value={passwordForm.next}
-                      onChange={(e) => { setPasswordForm((p) => ({ ...p, next: e.target.value })); setPwErrors((e2) => ({ ...e2, next: "" })); }}
-                      size="small" fullWidth
-                      error={Boolean(pwErrors.next)}
-                      helperText={pwErrors.next}
-                      placeholder="Min. 8 characters"
-                      InputProps={{
-                        sx: { borderRadius: "10px" },
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton size="small" onClick={() => pwToggle("next")} edge="end">
-                              {showPw.next ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                    <PasswordStrengthBar password={passwordForm.next} />
-                  </Box>
-
-                  {/* Confirm password */}
-                  <Box>
-                    <FieldLabel>Confirm Password</FieldLabel>
-                    <TextField
-                      type={showPw.confirm ? "text" : "password"}
-                      value={passwordForm.confirm}
-                      onChange={(e) => { setPasswordForm((p) => ({ ...p, confirm: e.target.value })); setPwErrors((e2) => ({ ...e2, confirm: "" })); }}
-                      size="small" fullWidth
-                      error={Boolean(pwErrors.confirm)}
-                      helperText={
-                        pwErrors.confirm ||
-                        (passwordForm.confirm && passwordForm.confirm === passwordForm.next
-                          ? "✓ Passwords match"
-                          : "")
-                      }
-                      FormHelperTextProps={{
-                        sx: {
-                          color: !pwErrors.confirm && passwordForm.confirm && passwordForm.confirm === passwordForm.next
-                            ? "success.main"
-                            : "error.main",
-                        },
-                      }}
-                      placeholder="Repeat new password"
-                      InputProps={{
-                        sx: { borderRadius: "10px" },
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton size="small" onClick={() => pwToggle("confirm")} edge="end">
-                              {showPw.confirm ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Box>
-                </Stack>
-
-                <Box mt={2.5}>
-                  <Button
-                    variant="contained" fullWidth
-                    startIcon={<ShieldIcon />}
-                    onClick={handlePasswordUpdate}
-                    disabled={loading}
-                    sx={{
-                      borderRadius: "10px", textTransform: "none", fontWeight: 700, py: 1.2,
-                      background: "linear-gradient(135deg,#2563eb,#0ea5e9)",
-                      boxShadow: "0 3px 12px rgba(37,99,235,.3)",
-                      "&:hover": {
-                        background: "linear-gradient(135deg,#1d4ed8,#0284c7)",
-                        boxShadow: "0 5px 18px rgba(37,99,235,.4)",
-                      },
-                    }}
-                  >
-                    Update Password
-                  </Button>
-                </Box>
-              </Paper>
-            </Grid>
-          </Grid>
-
-          {/* ══ PREFERENCES ══ */}
-          <Paper elevation={0} sx={cardSx}>
-            <SectionHeader
-              icon={TuneIcon}
-              title="Preferences"
-              subtitle="Personalize your dashboard experience"
-            />
-            <PrefRow
-              title="Dark Mode"
-              subtitle="Switch between light and dark interface theme"
-              checked={mode === "dark"}
-              onChange={toggleMode}
-            />
-            <PrefRow
-              title="Ticket Update Notifications"
-              subtitle="Receive alerts when your tickets change status"
-              checked={notifications}
-              onChange={(e) => {
-                setNotifications(e.target.checked);
-                notify(e.target.checked ? "Notifications enabled." : "Notifications disabled.", "info");
-              }}
-            />
-            <PrefRow
-              title="Weekly Email Digest"
-              subtitle="Summary of open and resolved tickets every Monday"
-              checked={emailDigest}
-              onChange={(e) => {
-                setEmailDigest(e.target.checked);
-                notify("Email digest preference saved.", "info");
-              }}
-            />
-          </Paper>
-
-          {/* ══ ACCOUNT METADATA ══ */}
-          <Paper elevation={0} sx={cardSx}>
-            <SectionHeader
-              icon={VerifiedUserIcon}
-              title="Account Metadata"
-              subtitle="Read-only system information"
-            />
-
-            <Grid container>
-              {[
-                { label: "Account Created",    value: draft.createdAt || "Jan 12, 2024" },
-                { label: "Email Verification", chip: <Chip icon={<CheckCircleIcon />} label="Verified" color="success" size="small" variant="outlined" sx={{ fontWeight: 700, borderRadius: "8px", fontSize: ".68rem" }} /> },
-                { label: "User ID",            value: draft.id, mono: true },
-                { label: "Active Sessions",    value: `${draft.activeSessions || 2} devices` },
-                { label: "Two-Factor Auth",    chip: <Chip icon={<WarningIcon />} label="Not Enabled" color="warning" size="small" variant="outlined" sx={{ fontWeight: 700, borderRadius: "8px", fontSize: ".68rem" }} /> },
-                { label: "API Access",         chip: <Chip label="Disabled" size="small" variant="outlined" sx={{ fontWeight: 700, borderRadius: "8px", fontSize: ".68rem", color: "text.secondary", borderColor: "divider" }} /> },
-              ].map(({ label, value, mono, chip }, i) => (
-                <Grid item xs={12} sm={6} key={label}>
-                  <Box
-                    sx={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      py: 1.5,
-                      px: { sm: i % 2 === 1 ? 2 : 0 },
-                      borderBottom: "1px solid", borderColor: "divider",
-                    }}
-                  >
-                    <Typography
-                      variant="caption" color="text.secondary"
-                      fontWeight={700} letterSpacing=".05em" textTransform="uppercase"
-                    >
-                      {label}
-                    </Typography>
-                    {chip || (
-                      <Typography
-                        variant="body2" fontWeight={700}
-                        sx={mono ? { fontFamily: "monospace", fontSize: ".78rem" } : {}}
-                      >
-                        {value}
-                      </Typography>
-                    )}
-                  </Box>
-                </Grid>
-              ))}
-            </Grid>
-          </Paper>
-
-        </Stack>
-      </Box>
-
-      {/* ── Toast ── */}
       <Snackbar
         open={toast.open}
         autoHideDuration={3500}
-        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           severity={toast.type}
-          onClose={() => setToast((t) => ({ ...t, open: false }))}
+          onClose={() => setToast((prev) => ({ ...prev, open: false }))}
           variant="filled"
           sx={{ borderRadius: "12px", fontWeight: 600 }}
         >
           {toast.text}
         </Alert>
       </Snackbar>
-    </DashboardLayout>
+    </Box>
   );
 }
